@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -83,6 +84,7 @@ private fun isSeededAdminCredentialValid(
 
 private enum class AppScreen {
     AdminLogin,
+    AdminDashboard,
     AdminRequests,
     AdminWorkerManagement,
     AdminUserManagement,
@@ -90,19 +92,19 @@ private enum class AppScreen {
     WorkerApply
 }
 
-private enum class WorkerRequestDecision {
+enum class WorkerRequestDecision {
     Pending,
     Approved,
     Rejected
 }
 
-private enum class WorkStatus {
+enum class WorkStatus {
     Pending,
     Booked,
     Completed
 }
 
-private data class WorkerRequestUiModel(
+data class WorkerRequestUiModel(
     val id: Int,
     val name: String,
     val role: String,
@@ -110,19 +112,19 @@ private data class WorkerRequestUiModel(
     val decision: WorkerRequestDecision = WorkerRequestDecision.Pending
 )
 
-private data class WorkerUiModel(
+data class WorkerUiModel(
     val id: Int,
     val name: String,
     val status: String
 )
 
-private data class UserUiModel(
+data class UserUiModel(
     val id: Int,
     val name: String,
     val status: String
 )
 
-private data class WorkUiModel(
+data class WorkUiModel(
     val id: Int,
     val workName: String,
     val detail: String,
@@ -137,16 +139,45 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
+                var requests by remember { mutableStateOf(listOf<WorkerRequestUiModel>()) }
+                var workers by remember { mutableStateOf(listOf<WorkerUiModel>()) }
+                var users by remember { mutableStateOf(listOf<UserUiModel>()) }
+                var works by remember { mutableStateOf(listOf<WorkUiModel>()) }
+
+                var isAdminLoggedIn by rememberSaveable { mutableStateOf(false) }
                 var screen by rememberSaveable { mutableStateOf(AppScreen.AdminLogin) }
-                when (screen) {
+                val guardedScreen = if (!isAdminLoggedIn) AppScreen.AdminLogin else screen
+                when (guardedScreen) {
                     AppScreen.AdminLogin -> {
                         AdminLoginScreen(
-                            onLoginClick = { _, _ -> screen = AppScreen.AdminRequests }
+                            onLoginClick = { _, _ ->
+                                isAdminLoggedIn = true
+                                screen = AppScreen.AdminDashboard
+                            }
+                        )
+                    }
+
+                    AppScreen.AdminDashboard -> {
+                        AdminDashboardScreen(
+                            users = users,
+                            workers = workers,
+                            works = works,
+                            onRequestsClick = { screen = AppScreen.AdminRequests },
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
+                            onUsersClick = { screen = AppScreen.AdminUserManagement },
+                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
                         )
                     }
 
                     AppScreen.AdminRequests -> {
                         AdminRequestWorkerScreen(
+                            requests = requests,
+                            onUpdateDecision = { requestId, decision ->
+                                requests = requests.map { existing ->
+                                    if (existing.id == requestId) existing.copy(decision = decision) else existing
+                                }
+                            },
+                            onDashboardClick = { screen = AppScreen.AdminDashboard },
                             onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
                             onUsersClick = { screen = AppScreen.AdminUserManagement },
                             onWorksClick = { screen = AppScreen.AdminWorkManagement }
@@ -155,6 +186,11 @@ class MainActivity : ComponentActivity() {
 
                     AppScreen.AdminWorkerManagement -> {
                         AdminWorkerManagementScreen(
+                            workers = workers,
+                            onDeleteWorker = { workerId ->
+                                workers = workers.filterNot { it.id == workerId }
+                            },
+                            onDashboardClick = { screen = AppScreen.AdminDashboard },
                             onRequestsClick = { screen = AppScreen.AdminRequests },
                             onUsersClick = { screen = AppScreen.AdminUserManagement },
                             onWorksClick = { screen = AppScreen.AdminWorkManagement }
@@ -163,6 +199,11 @@ class MainActivity : ComponentActivity() {
 
                     AppScreen.AdminUserManagement -> {
                         AdminUserManagementScreen(
+                            users = users,
+                            onDeleteUser = { userId ->
+                                users = users.filterNot { it.id == userId }
+                            },
+                            onDashboardClick = { screen = AppScreen.AdminDashboard },
                             onRequestsClick = { screen = AppScreen.AdminRequests },
                             onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
                             onWorksClick = { screen = AppScreen.AdminWorkManagement }
@@ -171,6 +212,8 @@ class MainActivity : ComponentActivity() {
 
                     AppScreen.AdminWorkManagement -> {
                         AdminWorkManagementScreen(
+                            works = works,
+                            onDashboardClick = { screen = AppScreen.AdminDashboard },
                             onRequestsClick = { screen = AppScreen.AdminRequests },
                             onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
                             onUsersClick = { screen = AppScreen.AdminUserManagement }
@@ -305,17 +348,164 @@ fun AdminLoginPreview() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminRequestWorkerScreen(
+fun AdminDashboardScreen(
     modifier: Modifier = Modifier,
+    users: List<UserUiModel>,
+    workers: List<WorkerUiModel>,
+    works: List<WorkUiModel>,
+    onRequestsClick: () -> Unit = { },
     onWorkersClick: () -> Unit = { },
     onUsersClick: () -> Unit = { },
     onWorksClick: () -> Unit = { }
 ) {
-    val initialRequests = remember {
-        emptyList<WorkerRequestUiModel>()
-    }
-    var requests by remember { mutableStateOf(initialRequests) }
+    val totalUsers = users.size
+    val activeWorkers = workers.count { it.status.equals("Active", ignoreCase = true) }
+    val pendingJobs = works.count { it.status == WorkStatus.Pending }
+    val revenue = 0
 
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Admin Dashboard") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 14.dp, vertical = 14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Total Users", fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = totalUsers.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Active Workers", fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = activeWorkers.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Pending Jobs", fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = pendingJobs.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "Revenue", fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = "$$revenue", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onRequestsClick,
+                    modifier = Modifier.weight(1f)
+                ) { Text(text = "Requests") }
+                Button(
+                    onClick = onWorkersClick,
+                    modifier = Modifier.weight(1f)
+                ) { Text(text = "Workers") }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onUsersClick,
+                    modifier = Modifier.weight(1f)
+                ) { Text(text = "Users") }
+                Button(
+                    onClick = onWorksClick,
+                    modifier = Modifier.weight(1f)
+                ) { Text(text = "Works") }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Text(text = "Recent Activity", fontWeight = FontWeight.SemiBold)
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Text(
+                    text = "No recent activity",
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminDashboardPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AdminDashboardScreen(
+            users = emptyList(),
+            workers = emptyList(),
+            works = emptyList()
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminRequestWorkerScreen(
+    modifier: Modifier = Modifier,
+    requests: List<WorkerRequestUiModel>,
+    onUpdateDecision: (requestId: Int, decision: WorkerRequestDecision) -> Unit = { _, _ -> },
+    onDashboardClick: () -> Unit = { },
+    onWorkersClick: () -> Unit = { },
+    onUsersClick: () -> Unit = { },
+    onWorksClick: () -> Unit = { }
+) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -327,6 +517,9 @@ fun AdminRequestWorkerScreen(
                 ),
                 actions = {
                     Row {
+                        TextButton(onClick = onDashboardClick) {
+                            Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                         TextButton(onClick = onWorkersClick) {
                             Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -390,9 +583,7 @@ fun AdminRequestWorkerScreen(
                                     Button(
                                         enabled = !isDecisionMade,
                                         onClick = {
-                                            requests = requests.map {
-                                                if (it.id == item.id) it.copy(decision = WorkerRequestDecision.Approved) else it
-                                            }
+                                            onUpdateDecision(item.id, WorkerRequestDecision.Approved)
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFF2E7D32),
@@ -407,9 +598,7 @@ fun AdminRequestWorkerScreen(
                                     Button(
                                         enabled = !isDecisionMade,
                                         onClick = {
-                                            requests = requests.map {
-                                                if (it.id == item.id) it.copy(decision = WorkerRequestDecision.Rejected) else it
-                                            }
+                                            onUpdateDecision(item.id, WorkerRequestDecision.Rejected)
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFFD32F2F),
@@ -442,7 +631,9 @@ fun AdminRequestWorkerScreen(
 @Composable
 fun AdminRequestWorkerPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
-        AdminRequestWorkerScreen()
+        AdminRequestWorkerScreen(
+            requests = emptyList()
+        )
     }
 }
 
@@ -450,16 +641,14 @@ fun AdminRequestWorkerPreview() {
 @Composable
 fun AdminWorkerManagementScreen(
     modifier: Modifier = Modifier,
+    workers: List<WorkerUiModel>,
+    onDeleteWorker: (workerId: Int) -> Unit = { },
+    onDashboardClick: () -> Unit = { },
     onRequestsClick: () -> Unit = { },
     onUsersClick: () -> Unit = { },
     onWorksClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
-
-    val initialWorkers = remember {
-        emptyList<WorkerUiModel>()
-    }
-    var workers by remember { mutableStateOf(initialWorkers) }
 
     val filteredWorkers = workers.filter { worker ->
         val query = searchQuery.trim()
@@ -477,6 +666,9 @@ fun AdminWorkerManagementScreen(
                 ),
                 actions = {
                     Row {
+                        TextButton(onClick = onDashboardClick) {
+                            Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                         TextButton(onClick = onRequestsClick) {
                             Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -558,7 +750,7 @@ fun AdminWorkerManagementScreen(
                                 }
 
                                 Button(
-                                    onClick = { workers = workers.filterNot { it.id == worker.id } },
+                                    onClick = { onDeleteWorker(worker.id) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFD32F2F),
                                         contentColor = Color.White
@@ -582,7 +774,9 @@ fun AdminWorkerManagementScreen(
 @Composable
 fun AdminWorkerManagementPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
-        AdminWorkerManagementScreen()
+        AdminWorkerManagementScreen(
+            workers = emptyList()
+        )
     }
 }
 
@@ -590,16 +784,14 @@ fun AdminWorkerManagementPreview() {
 @Composable
 fun AdminUserManagementScreen(
     modifier: Modifier = Modifier,
+    users: List<UserUiModel>,
+    onDeleteUser: (userId: Int) -> Unit = { },
+    onDashboardClick: () -> Unit = { },
     onRequestsClick: () -> Unit = { },
     onWorkersClick: () -> Unit = { },
     onWorksClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
-
-    val initialUsers = remember {
-        emptyList<UserUiModel>()
-    }
-    var users by remember { mutableStateOf(initialUsers) }
 
     val filteredUsers = users.filter { user ->
         val query = searchQuery.trim()
@@ -617,6 +809,9 @@ fun AdminUserManagementScreen(
                 ),
                 actions = {
                     Row {
+                        TextButton(onClick = onDashboardClick) {
+                            Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                         TextButton(onClick = onRequestsClick) {
                             Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -698,7 +893,7 @@ fun AdminUserManagementScreen(
                                 }
 
                                 Button(
-                                    onClick = { users = users.filterNot { it.id == user.id } },
+                                    onClick = { onDeleteUser(user.id) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFD32F2F),
                                         contentColor = Color.White
@@ -722,7 +917,9 @@ fun AdminUserManagementScreen(
 @Composable
 fun AdminUserManagementPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
-        AdminUserManagementScreen()
+        AdminUserManagementScreen(
+            users = emptyList()
+        )
     }
 }
 
@@ -730,16 +927,13 @@ fun AdminUserManagementPreview() {
 @Composable
 fun AdminWorkManagementScreen(
     modifier: Modifier = Modifier,
+    works: List<WorkUiModel>,
+    onDashboardClick: () -> Unit = { },
     onRequestsClick: () -> Unit = { },
     onWorkersClick: () -> Unit = { },
     onUsersClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
-
-    val initialWorks = remember {
-        emptyList<WorkUiModel>()
-    }
-    val works by remember { mutableStateOf(initialWorks) }
 
     val filteredWorks = works.filter { work ->
         val query = searchQuery.trim()
@@ -768,6 +962,9 @@ fun AdminWorkManagementScreen(
                 ),
                 actions = {
                     Row {
+                        TextButton(onClick = onDashboardClick) {
+                            Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                         TextButton(onClick = onRequestsClick) {
                             Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
                         }
@@ -883,7 +1080,9 @@ fun AdminWorkManagementScreen(
 @Composable
 fun AdminWorkManagementPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
-        AdminWorkManagementScreen()
+        AdminWorkManagementScreen(
+            works = emptyList()
+        )
     }
 }
 
