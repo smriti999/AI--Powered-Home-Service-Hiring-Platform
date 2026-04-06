@@ -86,6 +86,7 @@ private enum class AppScreen {
     AdminRequests,
     AdminWorkerManagement,
     AdminUserManagement,
+    AdminWorkManagement,
     WorkerApply
 }
 
@@ -93,6 +94,12 @@ private enum class WorkerRequestDecision {
     Pending,
     Approved,
     Rejected
+}
+
+private enum class WorkStatus {
+    Pending,
+    Booked,
+    Completed
 }
 
 private data class WorkerRequestUiModel(
@@ -115,6 +122,14 @@ private data class UserUiModel(
     val status: String
 )
 
+private data class WorkUiModel(
+    val id: Int,
+    val workName: String,
+    val detail: String,
+    val workerName: String?,
+    val status: WorkStatus
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,21 +148,32 @@ class MainActivity : ComponentActivity() {
                     AppScreen.AdminRequests -> {
                         AdminRequestWorkerScreen(
                             onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement }
+                            onUsersClick = { screen = AppScreen.AdminUserManagement },
+                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
                         )
                     }
 
                     AppScreen.AdminWorkerManagement -> {
                         AdminWorkerManagementScreen(
                             onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement }
+                            onUsersClick = { screen = AppScreen.AdminUserManagement },
+                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
                         )
                     }
 
                     AppScreen.AdminUserManagement -> {
                         AdminUserManagementScreen(
                             onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement }
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
+                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
+                        )
+                    }
+
+                    AppScreen.AdminWorkManagement -> {
+                        AdminWorkManagementScreen(
+                            onRequestsClick = { screen = AppScreen.AdminRequests },
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
+                            onUsersClick = { screen = AppScreen.AdminUserManagement }
                         )
                     }
 
@@ -282,7 +308,8 @@ fun AdminLoginPreview() {
 fun AdminRequestWorkerScreen(
     modifier: Modifier = Modifier,
     onWorkersClick: () -> Unit = { },
-    onUsersClick: () -> Unit = { }
+    onUsersClick: () -> Unit = { },
+    onWorksClick: () -> Unit = { }
 ) {
     val initialRequests = remember {
         emptyList<WorkerRequestUiModel>()
@@ -305,6 +332,9 @@ fun AdminRequestWorkerScreen(
                         }
                         TextButton(onClick = onUsersClick) {
                             Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onWorksClick) {
+                            Text(text = "Works", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 }
@@ -421,7 +451,8 @@ fun AdminRequestWorkerPreview() {
 fun AdminWorkerManagementScreen(
     modifier: Modifier = Modifier,
     onRequestsClick: () -> Unit = { },
-    onUsersClick: () -> Unit = { }
+    onUsersClick: () -> Unit = { },
+    onWorksClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
@@ -451,6 +482,9 @@ fun AdminWorkerManagementScreen(
                         }
                         TextButton(onClick = onUsersClick) {
                             Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onWorksClick) {
+                            Text(text = "Works", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 }
@@ -557,7 +591,8 @@ fun AdminWorkerManagementPreview() {
 fun AdminUserManagementScreen(
     modifier: Modifier = Modifier,
     onRequestsClick: () -> Unit = { },
-    onWorkersClick: () -> Unit = { }
+    onWorkersClick: () -> Unit = { },
+    onWorksClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
@@ -587,6 +622,9 @@ fun AdminUserManagementScreen(
                         }
                         TextButton(onClick = onWorkersClick) {
                             Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onWorksClick) {
+                            Text(text = "Works", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 }
@@ -685,6 +723,167 @@ fun AdminUserManagementScreen(
 fun AdminUserManagementPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
         AdminUserManagementScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminWorkManagementScreen(
+    modifier: Modifier = Modifier,
+    onRequestsClick: () -> Unit = { },
+    onWorkersClick: () -> Unit = { },
+    onUsersClick: () -> Unit = { }
+) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val initialWorks = remember {
+        emptyList<WorkUiModel>()
+    }
+    val works by remember { mutableStateOf(initialWorks) }
+
+    val filteredWorks = works.filter { work ->
+        val query = searchQuery.trim()
+        query.isBlank() ||
+            work.workName.contains(query, ignoreCase = true) ||
+            work.detail.contains(query, ignoreCase = true) ||
+            (work.workerName?.contains(query, ignoreCase = true) == true)
+    }
+
+    fun statusColor(status: WorkStatus): Color {
+        return when (status) {
+            WorkStatus.Pending -> Color(0xFFF9A825)
+            WorkStatus.Booked -> Color(0xFF1565C0)
+            WorkStatus.Completed -> Color(0xFF2E7D32)
+        }
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Work Management") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    Row {
+                        TextButton(onClick = onRequestsClick) {
+                            Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onWorkersClick) {
+                            Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onUsersClick) {
+                            Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text(text = "Search work.") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(text = "Total works: ${works.size}")
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (works.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No works available")
+                }
+            } else if (filteredWorks.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No works found")
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    filteredWorks.forEach { work ->
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = work.workName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = work.status.name,
+                                        color = statusColor(work.status),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = work.detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val workerLabel = when (work.status) {
+                                    WorkStatus.Pending -> "Worker: Not assigned"
+                                    WorkStatus.Booked -> "Worker: ${work.workerName ?: "Not assigned"}"
+                                    WorkStatus.Completed -> "Completed by: ${work.workerName ?: "Unknown"}"
+                                }
+
+                                Text(
+                                    text = workerLabel,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminWorkManagementPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AdminWorkManagementScreen()
     }
 }
 
