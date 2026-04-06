@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -82,6 +84,7 @@ private fun isSeededAdminCredentialValid(
 private enum class AppScreen {
     AdminLogin,
     AdminRequests,
+    AdminWorkerManagement,
     WorkerApply
 }
 
@@ -97,6 +100,12 @@ private data class WorkerRequestUiModel(
     val role: String,
     val experienceYears: Int,
     val decision: WorkerRequestDecision = WorkerRequestDecision.Pending
+)
+
+private data class WorkerUiModel(
+    val id: Int,
+    val name: String,
+    val status: String
 )
 
 class MainActivity : ComponentActivity() {
@@ -115,7 +124,15 @@ class MainActivity : ComponentActivity() {
                     }
 
                     AppScreen.AdminRequests -> {
-                        AdminRequestWorkerScreen()
+                        AdminRequestWorkerScreen(
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement }
+                        )
+                    }
+
+                    AppScreen.AdminWorkerManagement -> {
+                        AdminWorkerManagementScreen(
+                            onRequestsClick = { screen = AppScreen.AdminRequests }
+                        )
                     }
 
                     AppScreen.WorkerApply -> {
@@ -247,7 +264,8 @@ fun AdminLoginPreview() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminRequestWorkerScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onWorkersClick: () -> Unit = { }
 ) {
     val initialRequests = remember {
         emptyList<WorkerRequestUiModel>()
@@ -262,7 +280,12 @@ fun AdminRequestWorkerScreen(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                actions = {
+                    TextButton(onClick = onWorkersClick) {
+                        Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -368,6 +391,130 @@ fun AdminRequestWorkerScreen(
 fun AdminRequestWorkerPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
         AdminRequestWorkerScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminWorkerManagementScreen(
+    modifier: Modifier = Modifier,
+    onRequestsClick: () -> Unit = { }
+) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val initialWorkers = remember {
+        listOf(
+            WorkerUiModel(id = 1, name = "Smriti", status = "Active")
+        )
+    }
+    var workers by remember { mutableStateOf(initialWorkers) }
+
+    val filteredWorkers = workers.filter { worker ->
+        val query = searchQuery.trim()
+        query.isBlank() || worker.name.contains(query, ignoreCase = true)
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Worker Management") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    TextButton(onClick = onRequestsClick) {
+                        Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text(text = "Search worker.") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(text = "Total workers: ${filteredWorkers.size}")
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (filteredWorkers.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No workers available")
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    filteredWorkers.forEach { worker ->
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = worker.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Status: ${worker.status}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { workers = workers.filterNot { it.id == worker.id } },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFD32F2F),
+                                        contentColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .widthIn(min = 84.dp)
+                                ) {
+                                    Text(text = "Delete")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminWorkerManagementPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AdminWorkerManagementScreen()
     }
 }
 
