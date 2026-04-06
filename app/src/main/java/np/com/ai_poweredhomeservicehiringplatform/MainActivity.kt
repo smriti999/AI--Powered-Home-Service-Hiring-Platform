@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -44,6 +45,39 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
+import java.security.MessageDigest
+
+private const val AUTH_PREFS = "auth_prefs"
+private const val KEY_SEEDED_ADMIN_USERNAME = "seeded_admin_username"
+private const val KEY_SEEDED_ADMIN_PASSWORD_HASH = "seeded_admin_password_hash"
+
+private fun sha256Hex(value: String): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+    return bytes.joinToString(separator = "") { byte -> "%02x".format(byte) }
+}
+
+private fun seedAdminIfNeeded(context: Context) {
+    val prefs = context.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
+    val hasUsername = prefs.contains(KEY_SEEDED_ADMIN_USERNAME)
+    val hasPasswordHash = prefs.contains(KEY_SEEDED_ADMIN_PASSWORD_HASH)
+    if (hasUsername && hasPasswordHash) return
+
+    prefs.edit()
+        .putString(KEY_SEEDED_ADMIN_USERNAME, "admin")
+        .putString(KEY_SEEDED_ADMIN_PASSWORD_HASH, sha256Hex("admin123"))
+        .apply()
+}
+
+private fun isSeededAdminCredentialValid(
+    context: Context,
+    username: String,
+    password: String
+): Boolean {
+    val prefs = context.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
+    val seededUsername = prefs.getString(KEY_SEEDED_ADMIN_USERNAME, null) ?: return false
+    val seededPasswordHash = prefs.getString(KEY_SEEDED_ADMIN_PASSWORD_HASH, null) ?: return false
+    return username == seededUsername && sha256Hex(password) == seededPasswordHash
+}
 
 private enum class AppScreen {
     AdminLogin,
@@ -68,6 +102,7 @@ private data class WorkerRequestUiModel(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        seedAdminIfNeeded(this)
         enableEdgeToEdge()
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
@@ -98,8 +133,10 @@ fun AdminLoginScreen(
     modifier: Modifier = Modifier,
     onLoginClick: (username: String, password: String) -> Unit = { _, _ -> }
 ) {
+    val context = LocalContext.current
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -133,7 +170,10 @@ fun AdminLoginScreen(
 
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it },
+                onValueChange = {
+                    username = it
+                    errorMessage = null
+                },
                 placeholder = { Text(text = "Username") },
                 singleLine = true,
                 modifier = Modifier
@@ -146,7 +186,10 @@ fun AdminLoginScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    errorMessage = null
+                },
                 placeholder = { Text(text = "Password") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
@@ -158,8 +201,29 @@ fun AdminLoginScreen(
 
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(18.dp))
 
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
             Button(
-                onClick = { onLoginClick(username, password) },
+                onClick = {
+                    val trimmedUsername = username.trim()
+                    if (trimmedUsername.isBlank() || password.isBlank()) {
+                        errorMessage = "Username and password required"
+                        return@Button
+                    }
+
+                    if (!isSeededAdminCredentialValid(context, trimmedUsername, password)) {
+                        errorMessage = "Invalid admin credentials"
+                        return@Button
+                    }
+
+                    onLoginClick(trimmedUsername, password)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 360.dp)
