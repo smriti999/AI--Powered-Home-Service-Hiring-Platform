@@ -85,6 +85,7 @@ private enum class AppScreen {
     AdminLogin,
     AdminRequests,
     AdminWorkerManagement,
+    AdminUserManagement,
     WorkerApply
 }
 
@@ -108,6 +109,12 @@ private data class WorkerUiModel(
     val status: String
 )
 
+private data class UserUiModel(
+    val id: Int,
+    val name: String,
+    val status: String
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,13 +132,22 @@ class MainActivity : ComponentActivity() {
 
                     AppScreen.AdminRequests -> {
                         AdminRequestWorkerScreen(
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement }
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
+                            onUsersClick = { screen = AppScreen.AdminUserManagement }
                         )
                     }
 
                     AppScreen.AdminWorkerManagement -> {
                         AdminWorkerManagementScreen(
-                            onRequestsClick = { screen = AppScreen.AdminRequests }
+                            onRequestsClick = { screen = AppScreen.AdminRequests },
+                            onUsersClick = { screen = AppScreen.AdminUserManagement }
+                        )
+                    }
+
+                    AppScreen.AdminUserManagement -> {
+                        AdminUserManagementScreen(
+                            onRequestsClick = { screen = AppScreen.AdminRequests },
+                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement }
                         )
                     }
 
@@ -265,7 +281,8 @@ fun AdminLoginPreview() {
 @Composable
 fun AdminRequestWorkerScreen(
     modifier: Modifier = Modifier,
-    onWorkersClick: () -> Unit = { }
+    onWorkersClick: () -> Unit = { },
+    onUsersClick: () -> Unit = { }
 ) {
     val initialRequests = remember {
         emptyList<WorkerRequestUiModel>()
@@ -282,8 +299,13 @@ fun AdminRequestWorkerScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    TextButton(onClick = onWorkersClick) {
-                        Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                    Row {
+                        TextButton(onClick = onWorkersClick) {
+                            Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onUsersClick) {
+                            Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 }
             )
@@ -398,14 +420,13 @@ fun AdminRequestWorkerPreview() {
 @Composable
 fun AdminWorkerManagementScreen(
     modifier: Modifier = Modifier,
-    onRequestsClick: () -> Unit = { }
+    onRequestsClick: () -> Unit = { },
+    onUsersClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val initialWorkers = remember {
-        listOf(
-            WorkerUiModel(id = 1, name = "Smriti", status = "Active")
-        )
+        emptyList<WorkerUiModel>()
     }
     var workers by remember { mutableStateOf(initialWorkers) }
 
@@ -424,8 +445,13 @@ fun AdminWorkerManagementScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    TextButton(onClick = onRequestsClick) {
-                        Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
+                    Row {
+                        TextButton(onClick = onRequestsClick) {
+                            Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onUsersClick) {
+                            Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary)
+                        }
                     }
                 }
             )
@@ -447,17 +473,25 @@ fun AdminWorkerManagementScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Text(text = "Total workers: ${filteredWorkers.size}")
+            Text(text = "Total workers: ${workers.size}")
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (filteredWorkers.isEmpty()) {
+            if (workers.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(text = "No workers available")
+                }
+            } else if (filteredWorkers.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No workers found")
                 }
             } else {
                 Column(
@@ -515,6 +549,142 @@ fun AdminWorkerManagementScreen(
 fun AdminWorkerManagementPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
         AdminWorkerManagementScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminUserManagementScreen(
+    modifier: Modifier = Modifier,
+    onRequestsClick: () -> Unit = { },
+    onWorkersClick: () -> Unit = { }
+) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val initialUsers = remember {
+        emptyList<UserUiModel>()
+    }
+    var users by remember { mutableStateOf(initialUsers) }
+
+    val filteredUsers = users.filter { user ->
+        val query = searchQuery.trim()
+        query.isBlank() || user.name.contains(query, ignoreCase = true)
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "User Management") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    Row {
+                        TextButton(onClick = onRequestsClick) {
+                            Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                        TextButton(onClick = onWorkersClick) {
+                            Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text(text = "Search user.") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(text = "Total users: ${users.size}")
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (users.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No users available")
+                }
+            } else if (filteredUsers.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No users found")
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    filteredUsers.forEach { user ->
+                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = user.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Status: ${user.status}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { users = users.filterNot { it.id == user.id } },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFD32F2F),
+                                        contentColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .widthIn(min = 84.dp)
+                                ) {
+                                    Text(text = "Delete")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AdminUserManagementPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AdminUserManagementScreen()
     }
 }
 
