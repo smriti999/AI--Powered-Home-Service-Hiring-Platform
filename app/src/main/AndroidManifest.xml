@@ -33,6 +33,7 @@
         <activity android:name=".admin.AdminWorkManagementActivity" android:exported="false" />
 
         <activity android:name=".user.UserHomeActivity" android:exported="false" />
+        <activity android:name=".user.UserCategoriesActivity" android:exported="false" />
         <activity android:name=".user.UserCreateJobActivity" android:exported="false" />
         <activity android:name=".user.UserJobsActivity" android:exported="false" />
         <activity android:name=".user.UserSignUpActivity" android:exported="false" />

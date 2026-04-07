@@ -42,6 +42,8 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
+const val EXTRA_PRESET_SERVICE = "extra_preset_service"
+
 class UserCreateJobActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +58,10 @@ class UserCreateJobActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 val email = AppStorage.currentUserEmail(this) ?: ""
+                val presetService = intent.getStringExtra(EXTRA_PRESET_SERVICE).orEmpty()
                 UserCreateJobScreen(
                     userEmail = email,
+                    presetService = presetService,
                     onBackClick = { finish() },
                     onSubmit = { service, description, location, streetHomeNumber, alternativeLocation ->
                         val jobs = AppStorage.loadUserJobs(this)
@@ -116,6 +120,7 @@ class UserCreateJobActivity : ComponentActivity() {
 @Composable
 private fun UserCreateJobScreen(
     userEmail: String,
+    presetService: String,
     onBackClick: () -> Unit,
     onSubmit: (
         service: String,
@@ -125,7 +130,7 @@ private fun UserCreateJobScreen(
         alternativeLocation: String
     ) -> Unit
 ) {
-    var service by rememberSaveable { mutableStateOf("") }
+    var service by rememberSaveable { mutableStateOf(presetService) }
     var description by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var streetHomeNumber by rememberSaveable { mutableStateOf("") }
@@ -299,4 +304,3 @@ private fun UserCreateJobScreen(
         }
     }
 }
-
