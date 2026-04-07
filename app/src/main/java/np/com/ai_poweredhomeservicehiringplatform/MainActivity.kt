@@ -88,6 +88,7 @@ private fun isSeededAdminCredentialValid(
 
 private enum class AppScreen {
     AuthLogin,
+    AuthSignUp,
     AdminLogin,
     AdminDashboard,
     AdminRequests,
@@ -95,6 +96,11 @@ private enum class AppScreen {
     AdminUserManagement,
     AdminWorkManagement,
     WorkerApply
+}
+
+private enum class SignUpRole {
+    User,
+    Worker
 }
 
 enum class WorkerRequestDecision {
@@ -182,7 +188,16 @@ class MainActivity : ComponentActivity() {
                             onAdminLogoClick = {
                                 pendingAdminDestination = AppScreen.AdminDashboard
                                 screen = AppScreen.AdminLogin
+                            },
+                            onSignUpClick = {
+                                screen = AppScreen.AuthSignUp
                             }
+                        )
+                    }
+
+                    AppScreen.AuthSignUp -> {
+                        AuthSignUpScreen(
+                            onBackToLoginClick = { screen = AppScreen.AuthLogin }
                         )
                     }
 
@@ -276,7 +291,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AuthLoginScreen(
     modifier: Modifier = Modifier,
-    onAdminLogoClick: () -> Unit = { }
+    onAdminLogoClick: () -> Unit = { },
+    onSignUpClick: () -> Unit = { }
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -285,7 +301,7 @@ fun AuthLoginScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Login") },
+                title = { Text(text = "") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -363,6 +379,12 @@ fun AuthLoginScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            TextButton(onClick = onSignUpClick) {
+                Text(text = "Sign Up")
+            }
         }
     }
 }
@@ -372,6 +394,309 @@ fun AuthLoginScreen(
 fun AuthLoginPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
         AuthLoginScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuthSignUpScreen(
+    modifier: Modifier = Modifier,
+    onBackToLoginClick: () -> Unit = { }
+) {
+    var role by rememberSaveable { mutableStateOf(SignUpRole.User) }
+
+    var fullName by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var phoneNumber by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+
+    var profession by rememberSaveable { mutableStateOf("") }
+    var experienceYears by rememberSaveable { mutableStateOf("") }
+    var gender by rememberSaveable { mutableStateOf("") }
+    var bio by rememberSaveable { mutableStateOf("") }
+
+    val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = titleText) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    TextButton(onClick = onBackToLoginClick) {
+                        Text(text = "Login", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val selectedColors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+                val unselectedColors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+
+                if (role == SignUpRole.User) {
+                    Button(
+                        onClick = { role = SignUpRole.User },
+                        colors = selectedColors,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "User")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { role = SignUpRole.User },
+                        colors = unselectedColors,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "User")
+                    }
+                }
+
+                if (role == SignUpRole.Worker) {
+                    Button(
+                        onClick = { role = SignUpRole.Worker },
+                        colors = selectedColors,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "Worker")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { role = SignUpRole.Worker },
+                        colors = unselectedColors,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "Worker")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            OutlinedTextField(
+                value = fullName,
+                onValueChange = { fullName = it },
+                placeholder = { Text(text = "Full Name") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (role == SignUpRole.User) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text(text = "Email") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    placeholder = { Text(text = "Phone Number") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    placeholder = { Text(text = "Location") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text(text = "Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    placeholder = { Text(text = "Confirm Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Button(
+                    onClick = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                        .height(46.dp)
+                ) {
+                    Text(text = "CREATE ACCOUNT")
+                }
+            } else {
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    placeholder = { Text(text = "Phone Number") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = profession,
+                    onValueChange = { profession = it },
+                    placeholder = { Text(text = "Profession (e.g. Plumber)") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = experienceYears,
+                    onValueChange = { experienceYears = it },
+                    placeholder = { Text(text = "Experience (Years)") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text(text = "Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text(text = "Email") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    placeholder = { Text(text = "Location") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = gender,
+                    onValueChange = { gender = it },
+                    placeholder = { Text(text = "Gender") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = bio,
+                    onValueChange = { bio = it },
+                    placeholder = { Text(text = "Bio") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Button(
+                    onClick = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                        .height(46.dp)
+                ) {
+                    Text(text = "REGISTER")
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AuthSignUpPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AuthSignUpScreen()
     }
 }
 
