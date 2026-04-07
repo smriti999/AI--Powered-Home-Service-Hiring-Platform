@@ -1032,6 +1032,7 @@ fun AuthSignUpScreen(
     ) -> Unit = { _, _, _, _, _, _, _ -> },
     onBackToLoginClick: () -> Unit = { }
 ) {
+    val context = LocalContext.current
     var role by rememberSaveable { mutableStateOf(SignUpRole.User) }
 
     var fullName by rememberSaveable { mutableStateOf("") }
@@ -1047,6 +1048,11 @@ fun AuthSignUpScreen(
     var experienceYears by rememberSaveable { mutableStateOf("") }
     var gender by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var workerErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var showWorkerThankYouDialog by rememberSaveable { mutableStateOf(false) }
+    var workerCvUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var workerCvFileName by rememberSaveable { mutableStateOf<String?>(null) }
+    var workerCvSizeBytes by rememberSaveable { mutableStateOf<Long?>(null) }
 
     val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
     val locationOptions = remember { listOf("Kathmandu", "Bhaktapur", "Lalitpur") }
@@ -1066,6 +1072,50 @@ fun AuthSignUpScreen(
     }
     var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var isProfessionMenuExpanded by rememberSaveable { mutableStateOf(false) }
+
+    fun getFileNameAndSize(uri: Uri): Pair<String?, Long?> {
+        return runCatching {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                val moved = cursor.moveToFirst()
+                val name = if (moved && nameIndex >= 0) cursor.getString(nameIndex) else null
+                val size = if (moved && sizeIndex >= 0) cursor.getLong(sizeIndex) else null
+                name to size
+            }
+        }.getOrNull() ?: (null to null)
+    }
+
+    val cvPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+
+        val (name, sizeBytes) = getFileNameAndSize(uri)
+        val minBytes = 2L * 1024L * 1024L
+        val maxBytes = 5L * 1024L * 1024L
+        val isValidSize = sizeBytes != null && sizeBytes in minBytes..maxBytes
+
+        if (!isValidSize) {
+            workerCvUriString = null
+            workerCvFileName = null
+            workerCvSizeBytes = null
+            workerErrorMessage = "CV must be a PDF between 2MB and 5MB"
+            return@rememberLauncherForActivityResult
+        }
+
+        workerCvUriString = uri.toString()
+        workerCvFileName = name ?: uri.lastPathSegment
+        workerCvSizeBytes = sizeBytes
+        workerErrorMessage = null
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -1147,7 +1197,11 @@ fun AuthSignUpScreen(
 
             OutlinedTextField(
                 value = fullName,
-                onValueChange = { fullName = it },
+            onValueChange = {
+                fullName = it
+                errorMessage = null
+                workerErrorMessage = null
+            },
                 placeholder = { Text(text = "Full Name") },
                 singleLine = true,
                 modifier = Modifier
@@ -1341,7 +1395,10 @@ fun AuthSignUpScreen(
             } else {
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = normalizeGmailEmail(it) },
+                    onValueChange = {
+                        email = normalizeGmailEmail(it)
+                        workerErrorMessage = null
+                    },
                     placeholder = { Text(text = "Email") },
                     singleLine = true,
                     modifier = Modifier
@@ -1353,7 +1410,10 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { phoneNumber = normalizePhoneNumber(it) },
+                    onValueChange = {
+                        phoneNumber = normalizePhoneNumber(it)
+                        workerErrorMessage = null
+                    },
                     placeholder = { Text(text = "Phone Number") },
                     singleLine = true,
                     modifier = Modifier
@@ -1395,6 +1455,7 @@ fun AuthSignUpScreen(
                                 onClick = {
                                     location = option
                                     isLocationMenuExpanded = false
+                                    workerErrorMessage = null
                                 }
                             )
                         }
@@ -1406,7 +1467,10 @@ fun AuthSignUpScreen(
 
                     OutlinedTextField(
                         value = streetHomeNumber,
-                        onValueChange = { streetHomeNumber = it },
+                    onValueChange = {
+                        streetHomeNumber = it
+                        workerErrorMessage = null
+                    },
                         placeholder = { Text(text = "Street, Home Number") },
                         singleLine = true,
                         modifier = Modifier
@@ -1418,7 +1482,10 @@ fun AuthSignUpScreen(
 
                     OutlinedTextField(
                         value = alternativeLocation,
-                        onValueChange = { alternativeLocation = it },
+                    onValueChange = {
+                        alternativeLocation = it
+                        workerErrorMessage = null
+                    },
                         placeholder = { Text(text = "Alternative Location") },
                         singleLine = true,
                         modifier = Modifier
@@ -1431,7 +1498,10 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = gender,
-                    onValueChange = { gender = it },
+                    onValueChange = {
+                        gender = it
+                        workerErrorMessage = null
+                    },
                     placeholder = { Text(text = "Gender") },
                     singleLine = true,
                     modifier = Modifier
@@ -1473,6 +1543,7 @@ fun AuthSignUpScreen(
                                 onClick = {
                                     profession = option
                                     isProfessionMenuExpanded = false
+                                    workerErrorMessage = null
                                 }
                             )
                         }
@@ -1483,7 +1554,10 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = experienceYears,
-                    onValueChange = { experienceYears = it },
+                    onValueChange = {
+                        experienceYears = it
+                        workerErrorMessage = null
+                    },
                     placeholder = { Text(text = "Experience (Years)") },
                     singleLine = true,
                     modifier = Modifier
@@ -1495,7 +1569,10 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = {
+                        password = it
+                        workerErrorMessage = null
+                    },
                     placeholder = { Text(text = "Password") },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
@@ -1504,10 +1581,93 @@ fun AuthSignUpScreen(
                         .widthIn(max = 360.dp)
                 )
 
-                Spacer(modifier = Modifier.height(26.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = { cvPickerLauncher.launch(arrayOf("application/pdf")) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                        .height(44.dp)
+                ) {
+                    Text(text = "UPLOAD CV (PDF)")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val sizeMb = workerCvSizeBytes?.let { (it.toDouble() / (1024.0 * 1024.0)) }
+                Text(
+                    text = if (workerCvUriString != null) {
+                        val name = workerCvFileName ?: "CV selected"
+                        val mb = sizeMb?.let { String.format("%.2f", it) } ?: "-"
+                        "Selected: $name ($mb MB)"
+                    } else {
+                        "No CV selected"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                if (workerErrorMessage != null) {
+                    Text(
+                        text = workerErrorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
 
                 Button(
-                    onClick = { },
+                    onClick = {
+                        val trimmedName = fullName.trim()
+                        val trimmedEmail = email.trim()
+                        val trimmedPhone = phoneNumber.trim()
+                        val trimmedStreet = streetHomeNumber.trim()
+                        val trimmedAlt = alternativeLocation.trim()
+                        val trimmedGender = gender.trim()
+                        val trimmedExperience = experienceYears.trim()
+
+                        val cvUri = workerCvUriString?.let { Uri.parse(it) }
+                        val cvSize = workerCvSizeBytes
+
+                        if (
+                            trimmedName.isBlank() ||
+                            trimmedEmail.isBlank() ||
+                            trimmedPhone.isBlank() ||
+                            location.isBlank() ||
+                            trimmedStreet.isBlank() ||
+                            trimmedGender.isBlank() ||
+                            profession.isBlank() ||
+                            trimmedExperience.isBlank() ||
+                            password.isBlank() ||
+                            cvUri == null ||
+                            cvSize == null
+                        ) {
+                            workerErrorMessage = "All fields are required"
+                            return@Button
+                        }
+
+                        if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
+                            workerErrorMessage = "Email must end with @gmail.com"
+                            return@Button
+                        }
+
+                        if (trimmedPhone.length != 10) {
+                            workerErrorMessage = "Phone number must be 10 digits"
+                            return@Button
+                        }
+
+                        val minBytes = 2L * 1024L * 1024L
+                        val maxBytes = 5L * 1024L * 1024L
+                        if (cvSize !in minBytes..maxBytes) {
+                            workerErrorMessage = "CV must be a PDF between 2MB and 5MB"
+                            return@Button
+                        }
+
+                        workerErrorMessage = null
+                        showWorkerThankYouDialog = true
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
@@ -1517,6 +1677,24 @@ fun AuthSignUpScreen(
                 }
             }
         }
+    }
+
+    if (showWorkerThankYouDialog) {
+        AlertDialog(
+            onDismissRequest = { showWorkerThankYouDialog = false },
+            title = { Text(text = "Thank you") },
+            text = { Text(text = "Thank you for submitting. Please wait for 24 hours.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showWorkerThankYouDialog = false
+                        onBackToLoginClick()
+                    }
+                ) {
+                    Text(text = "OK")
+                }
+            }
+        )
     }
 }
 
