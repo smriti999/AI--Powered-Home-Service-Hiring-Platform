@@ -1146,7 +1146,10 @@ fun AuthSignUpScreen(
             if (role == SignUpRole.User) {
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {
+                        email = normalizeGmailEmail(it)
+                        errorMessage = null
+                    },
                     placeholder = { Text(text = "Email") },
                     singleLine = true,
                     modifier = Modifier
@@ -1158,7 +1161,10 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
+                    onValueChange = {
+                        phoneNumber = normalizePhoneNumber(it)
+                        errorMessage = null
+                    },
                     placeholder = { Text(text = "Phone Number") },
                     singleLine = true,
                     modifier = Modifier
@@ -1293,6 +1299,16 @@ fun AuthSignUpScreen(
                             return@Button
                         }
 
+                        if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
+                            errorMessage = "Email must end with @gmail.com"
+                            return@Button
+                        }
+
+                        if (trimmedPhone.length != 10) {
+                            errorMessage = "Phone number must be 10 digits"
+                            return@Button
+                        }
+
                         if (password != confirmPassword) {
                             errorMessage = "Password does not match"
                             return@Button
@@ -1311,7 +1327,7 @@ fun AuthSignUpScreen(
             } else {
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
+                    onValueChange = { phoneNumber = normalizePhoneNumber(it) },
                     placeholder = { Text(text = "Phone Number") },
                     singleLine = true,
                     modifier = Modifier
@@ -1360,7 +1376,7 @@ fun AuthSignUpScreen(
 
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { email = normalizeGmailEmail(it) },
                     placeholder = { Text(text = "Email") },
                     singleLine = true,
                     modifier = Modifier
