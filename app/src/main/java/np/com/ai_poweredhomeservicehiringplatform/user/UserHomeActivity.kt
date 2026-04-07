@@ -56,9 +56,13 @@ class UserHomeActivity : ComponentActivity() {
                     onMyJobsClick = { startActivity(Intent(this, UserJobsActivity::class.java)) },
                     onCategoriesClick = { startActivity(Intent(this, UserCategoriesActivity::class.java)) },
                     onCategoryClick = { category ->
-                        val intent = Intent(this, UserCreateJobActivity::class.java)
-                        intent.putExtra(EXTRA_PRESET_SERVICE, category)
-                        startActivity(intent)
+                        if (category == "Others") {
+                            startActivity(Intent(this, UserCategoriesActivity::class.java))
+                        } else {
+                            val intent = Intent(this, UserCreateJobActivity::class.java)
+                            intent.putExtra(EXTRA_PRESET_SERVICE, category)
+                            startActivity(intent)
+                        }
                     },
                     onLogoutClick = {
                         AppStorage.setUserLoggedIn(this, false, null)
@@ -85,7 +89,7 @@ private fun UserHomeScreen(
         "Plumbing Services",
         "Cleaning Services",
         "Electrical Services",
-        "Relocation Services"
+        "Others"
     )
     Scaffold(
         modifier = Modifier.fillMaxSize(),
