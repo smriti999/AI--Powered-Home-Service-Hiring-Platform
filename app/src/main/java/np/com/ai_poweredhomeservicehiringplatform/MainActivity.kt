@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +68,18 @@ private const val KEY_USERS_JSON = "users_json"
 private fun sha256Hex(value: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
     return bytes.joinToString(separator = "") { byte -> "%02x".format(byte) }
+}
+
+private fun normalizePhoneNumber(value: String): String {
+    return value.filter { it.isDigit() }.take(10)
+}
+
+private fun normalizeGmailEmail(value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) return ""
+    val prefix = trimmed.substringBefore("@").replace(" ", "")
+    if (prefix.isBlank()) return ""
+    return "$prefix@gmail.com"
 }
 
 private fun seedAdminIfNeeded(context: Context) {
@@ -532,7 +545,11 @@ fun AuthLoginScreen(
 
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = normalizeGmailEmail(it)
+                    errorMessage = null
+                    isLoginSuccessful = false
+                },
                 placeholder = { Text(text = "Email") },
                 singleLine = true,
                 modifier = Modifier
@@ -544,7 +561,11 @@ fun AuthLoginScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    errorMessage = null
+                    isLoginSuccessful = false
+                },
                 placeholder = { Text(text = "Password") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
@@ -2046,6 +2067,7 @@ fun AdminUserManagementScreen(
     onWorksClick: () -> Unit = { }
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedUser by remember { mutableStateOf<UserUiModel?>(null) }
 
     val filteredUsers = users.filter { user ->
         val query = searchQuery.trim()
@@ -2136,7 +2158,8 @@ fun AdminUserManagementScreen(
                                     Text(
                                         text = user.name,
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.clickable { selectedUser = user }
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
@@ -2164,6 +2187,30 @@ fun AdminUserManagementScreen(
                 }
             }
         }
+    }
+
+    if (selectedUser != null) {
+        val user = selectedUser ?: return
+        AlertDialog(
+            onDismissRequest = { selectedUser = null },
+            title = { Text(text = user.name) },
+            text = {
+                Column {
+                    Text(text = "Email: ${user.email.ifBlank { "-" }}")
+                    Text(text = "Phone: ${user.phoneNumber.ifBlank { "-" }}")
+                    Text(text = "Status: ${user.status.ifBlank { "-" }}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Location: ${user.location.ifBlank { "-" }}")
+                    Text(text = "Street/Home: ${user.streetHomeNumber.ifBlank { "-" }}")
+                    Text(text = "Alternative: ${user.alternativeLocation.ifBlank { "-" }}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedUser = null }) {
+                    Text(text = "Close")
+                }
+            }
+        )
     }
 }
 
