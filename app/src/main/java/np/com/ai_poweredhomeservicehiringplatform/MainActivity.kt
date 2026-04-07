@@ -56,10 +56,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import java.security.MessageDigest
+import org.json.JSONArray
+import org.json.JSONObject
 
 private const val AUTH_PREFS = "auth_prefs"
 private const val KEY_SEEDED_ADMIN_USERNAME = "seeded_admin_username"
 private const val KEY_SEEDED_ADMIN_PASSWORD_HASH = "seeded_admin_password_hash"
+private const val KEY_USERS_JSON = "users_json"
 
 private fun sha256Hex(value: String): String {
     val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
@@ -87,6 +90,49 @@ private fun isSeededAdminCredentialValid(
     val seededUsername = prefs.getString(KEY_SEEDED_ADMIN_USERNAME, null) ?: return false
     val seededPasswordHash = prefs.getString(KEY_SEEDED_ADMIN_PASSWORD_HASH, null) ?: return false
     return username == seededUsername && sha256Hex(password) == seededPasswordHash
+}
+
+private fun loadUsers(context: Context): List<UserUiModel> {
+    val prefs = context.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
+    val raw = prefs.getString(KEY_USERS_JSON, "[]") ?: "[]"
+    val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+    val result = ArrayList<UserUiModel>(arr.length())
+    for (i in 0 until arr.length()) {
+        val obj = arr.optJSONObject(i) ?: continue
+        result.add(
+            UserUiModel(
+                id = obj.optInt("id", 0),
+                name = obj.optString("name", ""),
+                status = obj.optString("status", "Active"),
+                email = obj.optString("email", ""),
+                phoneNumber = obj.optString("phoneNumber", ""),
+                location = obj.optString("location", ""),
+                streetHomeNumber = obj.optString("streetHomeNumber", ""),
+                alternativeLocation = obj.optString("alternativeLocation", ""),
+                passwordHash = obj.optString("passwordHash", "")
+            )
+        )
+    }
+    return result
+}
+
+private fun saveUsers(context: Context, users: List<UserUiModel>) {
+    val prefs = context.getSharedPreferences(AUTH_PREFS, Context.MODE_PRIVATE)
+    val arr = JSONArray()
+    users.forEach { user ->
+        val obj = JSONObject()
+        obj.put("id", user.id)
+        obj.put("name", user.name)
+        obj.put("status", user.status)
+        obj.put("email", user.email)
+        obj.put("phoneNumber", user.phoneNumber)
+        obj.put("location", user.location)
+        obj.put("streetHomeNumber", user.streetHomeNumber)
+        obj.put("alternativeLocation", user.alternativeLocation)
+        obj.put("passwordHash", user.passwordHash)
+        arr.put(obj)
+    }
+    prefs.edit().putString(KEY_USERS_JSON, arr.toString()).apply()
 }
 
 private enum class AppScreen {
@@ -135,7 +181,13 @@ data class WorkerUiModel(
 data class UserUiModel(
     val id: Int,
     val name: String,
-    val status: String
+    val status: String,
+    val email: String = "",
+    val phoneNumber: String = "",
+    val location: String = "",
+    val streetHomeNumber: String = "",
+    val alternativeLocation: String = "",
+    val passwordHash: String = ""
 )
 
 data class WorkUiModel(
@@ -153,9 +205,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
+                val context = LocalContext.current
                 var requests by remember { mutableStateOf(listOf<WorkerRequestUiModel>()) }
                 var workers by remember { mutableStateOf(listOf<WorkerUiModel>()) }
-                var users by remember { mutableStateOf(listOf<UserUiModel>()) }
+                val initialUsers = remember { loadUsers(context) }
+                var users by remember { mutableStateOf(initialUsers) }
                 var works by remember { mutableStateOf(listOf<WorkUiModel>()) }
 
                 var isAdminLoggedIn by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +246,11 @@ class MainActivity : ComponentActivity() {
                                 pendingAdminDestination = AppScreen.AdminDashboard
                                 screen = AppScreen.AdminLogin
                             },
+                            onLogin = { email, password ->
+                                val trimmedEmail = email.trim()
+                                val hashedPassword = sha256Hex(password)
+                                users.any { it.email.equals(trimmedEmail, ignoreCase = true) && it.passwordHash == hashedPassword }
+                            },
                             onSignUpClick = {
                                 screen = AppScreen.AuthSignUp
                             }
@@ -200,6 +259,25 @@ class MainActivity : ComponentActivity() {
 
                     AppScreen.AuthSignUp -> {
                         AuthSignUpScreen(
+                            existingUserEmails = users.map { it.email.lowercase() }.toSet(),
+                            onUserSignUp = { fullName, email, phoneNumber, location, streetHomeNumber, alternativeLocation, password ->
+                                val nextId = (users.maxOfOrNull { it.id } ?: 0) + 1
+                                val newUser = UserUiModel(
+                                    id = nextId,
+                                    name = fullName,
+                                    status = "Active",
+                                    email = email.trim(),
+                                    phoneNumber = phoneNumber.trim(),
+                                    location = location,
+                                    streetHomeNumber = streetHomeNumber.trim(),
+                                    alternativeLocation = alternativeLocation.trim(),
+                                    passwordHash = sha256Hex(password)
+                                )
+                                val updatedUsers = users + newUser
+                                users = updatedUsers
+                                saveUsers(context, updatedUsers)
+                                screen = AppScreen.AuthLogin
+                            },
                             onBackToLoginClick = { screen = AppScreen.AuthLogin }
                         )
                     }
@@ -262,7 +340,9 @@ class MainActivity : ComponentActivity() {
                         AdminUserManagementScreen(
                             users = users,
                             onDeleteUser = { userId ->
-                                users = users.filterNot { it.id == userId }
+                                val updatedUsers = users.filterNot { it.id == userId }
+                                users = updatedUsers
+                                saveUsers(context, updatedUsers)
                             },
                             onDashboardClick = { openAdmin(AppScreen.AdminDashboard) },
                             onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
@@ -295,10 +375,13 @@ class MainActivity : ComponentActivity() {
 fun AuthLoginScreen(
     modifier: Modifier = Modifier,
     onAdminLogoClick: () -> Unit = { },
+    onLogin: (email: String, password: String) -> Boolean = { _, _ -> false },
     onSignUpClick: () -> Unit = { }
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var isLoginSuccessful by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -365,8 +448,36 @@ fun AuthLoginScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            } else if (isLoginSuccessful) {
+                Text(text = "Login successful")
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
             Button(
-                onClick = { },
+                onClick = {
+                    val trimmedEmail = email.trim()
+                    if (trimmedEmail.isBlank() || password.isBlank()) {
+                        errorMessage = "Email and password required"
+                        isLoginSuccessful = false
+                        return@Button
+                    }
+
+                    val ok = onLogin(trimmedEmail, password)
+                    if (!ok) {
+                        errorMessage = "Invalid credentials"
+                        isLoginSuccessful = false
+                        return@Button
+                    }
+
+                    errorMessage = null
+                    isLoginSuccessful = true
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 360.dp)
@@ -404,6 +515,16 @@ fun AuthLoginPreview() {
 @Composable
 fun AuthSignUpScreen(
     modifier: Modifier = Modifier,
+    existingUserEmails: Set<String> = emptySet(),
+    onUserSignUp: (
+        fullName: String,
+        email: String,
+        phoneNumber: String,
+        location: String,
+        streetHomeNumber: String,
+        alternativeLocation: String,
+        password: String
+    ) -> Unit = { _, _, _, _, _, _, _ -> },
     onBackToLoginClick: () -> Unit = { }
 ) {
     var role by rememberSaveable { mutableStateOf(SignUpRole.User) }
@@ -421,6 +542,7 @@ fun AuthSignUpScreen(
     var experienceYears by rememberSaveable { mutableStateOf("") }
     var gender by rememberSaveable { mutableStateOf("") }
     var bio by rememberSaveable { mutableStateOf("") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
     val locationOptions = remember { listOf("Kathmandu", "Bhaktapur", "Lalitpur") }
@@ -633,14 +755,53 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(26.dp))
 
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
                 Button(
-                    onClick = { },
+                    onClick = {
+                        val trimmedName = fullName.trim()
+                        val trimmedEmail = email.trim()
+                        val trimmedPhone = phoneNumber.trim()
+                        val trimmedStreet = streetHomeNumber.trim()
+                        val trimmedAlt = alternativeLocation.trim()
+
+                        if (trimmedName.isBlank() ||
+                            trimmedEmail.isBlank() ||
+                            trimmedPhone.isBlank() ||
+                            location.isBlank() ||
+                            trimmedStreet.isBlank() ||
+                            password.isBlank() ||
+                            confirmPassword.isBlank()
+                        ) {
+                            errorMessage = "All fields are required"
+                            return@Button
+                        }
+
+                        if (existingUserEmails.contains(trimmedEmail.lowercase())) {
+                            errorMessage = "Email already registered"
+                            return@Button
+                        }
+
+                        if (password != confirmPassword) {
+                            errorMessage = "Password does not match"
+                            return@Button
+                        }
+
+                        errorMessage = null
+                        onUserSignUp(trimmedName, trimmedEmail, trimmedPhone, location, trimmedStreet, trimmedAlt, password)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
                         .height(46.dp)
                 ) {
-                    Text(text = "CREATE ACCOUNT")
+                    Text(text = "SIGN UP")
                 }
             } else {
                 OutlinedTextField(
