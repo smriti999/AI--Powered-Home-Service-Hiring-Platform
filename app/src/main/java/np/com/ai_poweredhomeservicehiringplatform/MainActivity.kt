@@ -1071,8 +1071,10 @@ fun AuthSignUpScreen(
             "Maid & Cooking Services"
         )
     }
+    val genderOptions = remember { listOf("Male", "Female", "Other") }
     var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var isProfessionMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var isGenderMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     fun getFileNameAndSize(uri: Uri): Pair<String?, Long?> {
         return runCatching {
@@ -1498,18 +1500,44 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = gender,
-                    onValueChange = {
-                        gender = it
-                        workerErrorMessage = null
-                    },
-                    placeholder = { Text(text = "Gender") },
-                    singleLine = true,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = gender,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Gender") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isGenderMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isGenderMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isGenderMenuExpanded,
+                        onDismissRequest = { isGenderMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        genderOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    gender = option
+                                    isGenderMenuExpanded = false
+                                    workerErrorMessage = null
+                                }
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
