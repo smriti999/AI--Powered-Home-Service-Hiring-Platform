@@ -46,6 +46,7 @@ import np.com.ai_poweredhomeservicehiringplatform.common.sha256Hex
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import np.com.ai_poweredhomeservicehiringplatform.user.UserHomeActivity
+import np.com.ai_poweredhomeservicehiringplatform.worker.WorkerDashboardActivity
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,15 +66,26 @@ class LoginActivity : ComponentActivity() {
             return
         }
 
+        if (AppStorage.isWorkerLoggedIn(this)) {
+            startActivity(Intent(this, WorkerDashboardActivity::class.java))
+            finish()
+            return
+        }
+
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 LoginScreen(
                     onAdminLogoClick = {
                         startActivity(Intent(this, AdminLoginActivity::class.java))
                     },
-                    onLoginSuccess = { email ->
+                    onUserLoginSuccess = { email ->
                         AppStorage.setUserLoggedIn(this, true, email)
                         startActivity(Intent(this, UserHomeActivity::class.java))
+                        finish()
+                    },
+                    onWorkerLoginSuccess = { email ->
+                        AppStorage.setWorkerLoggedIn(this, true, email)
+                        startActivity(Intent(this, WorkerDashboardActivity::class.java))
                         finish()
                     },
                     onSignUpClick = {
@@ -89,7 +101,8 @@ class LoginActivity : ComponentActivity() {
 @Composable
 private fun LoginScreen(
     onAdminLogoClick: () -> Unit,
-    onLoginSuccess: (email: String) -> Unit,
+    onUserLoginSuccess: (email: String) -> Unit,
+    onWorkerLoginSuccess: (email: String) -> Unit,
     onSignUpClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -183,16 +196,30 @@ private fun LoginScreen(
                     }
 
                     val users = AppStorage.loadUsers(context)
-                    val ok = users.any {
+                    val isUserOk = users.any {
                         it.email.equals(trimmedEmail, ignoreCase = true) && it.passwordHash == sha256Hex(password)
                     }
-                    if (!ok) {
-                        errorMessage = "Invalid credentials"
+
+                    if (isUserOk) {
+                        errorMessage = null
+                        onUserLoginSuccess(trimmedEmail)
                         return@Button
                     }
 
-                    errorMessage = null
-                    onLoginSuccess(trimmedEmail)
+                    val workers = AppStorage.loadWorkers(context)
+                    val isWorkerOk = workers.any {
+                        it.email.equals(trimmedEmail, ignoreCase = true) &&
+                            it.passwordHash == sha256Hex(password) &&
+                            it.status.equals("Active", ignoreCase = true)
+                    }
+
+                    if (isWorkerOk) {
+                        errorMessage = null
+                        onWorkerLoginSuccess(trimmedEmail)
+                        return@Button
+                    }
+
+                    errorMessage = "Invalid credentials"
                 },
                 modifier = Modifier
                     .fillMaxWidth()

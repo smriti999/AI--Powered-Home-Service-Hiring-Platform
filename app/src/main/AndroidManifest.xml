@@ -39,6 +39,7 @@
         <activity android:name=".user.UserSignUpActivity" android:exported="false" />
 
         <activity android:name=".worker.WorkerRegistrationActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerDashboardActivity" android:exported="false" />
     </application>
 
 </manifest>

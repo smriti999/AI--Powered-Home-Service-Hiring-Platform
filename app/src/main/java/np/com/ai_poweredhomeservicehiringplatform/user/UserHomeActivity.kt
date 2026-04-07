@@ -54,7 +54,6 @@ class UserHomeActivity : ComponentActivity() {
                     userEmail = email,
                     onCreateJobClick = { startActivity(Intent(this, UserCreateJobActivity::class.java)) },
                     onMyJobsClick = { startActivity(Intent(this, UserJobsActivity::class.java)) },
-                    onCategoriesClick = { startActivity(Intent(this, UserCategoriesActivity::class.java)) },
                     onCategoryClick = { category ->
                         if (category == "Others") {
                             startActivity(Intent(this, UserCategoriesActivity::class.java))
@@ -81,7 +80,6 @@ private fun UserHomeScreen(
     userEmail: String,
     onCreateJobClick: () -> Unit,
     onMyJobsClick: () -> Unit,
-    onCategoriesClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -165,32 +163,6 @@ private fun UserHomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            TextButton(onClick = onCategoriesClick) {
-                Text(text = "Other")
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(text = "Popular Providers", fontWeight = FontWeight.Bold)
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            OutlinedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 520.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(text = "Smriti Services", fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Rating: 4.9 (120 reviews)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(18.dp))
 
             Row(
@@ -205,7 +177,7 @@ private fun UserHomeScreen(
                         .weight(1f)
                         .height(46.dp)
                 ) {
-                    Text(text = "CREATE JOB")
+                    Text(text = "NEED WORKER")
                 }
                 OutlinedButton(
                     onClick = onMyJobsClick,
@@ -213,18 +185,10 @@ private fun UserHomeScreen(
                         .weight(1f)
                         .height(46.dp)
                 ) {
-                    Text(text = "MY JOBS")
+                    Text(text = "WORKS")
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = userEmail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 2.dp)
-            )
         }
     }
 }

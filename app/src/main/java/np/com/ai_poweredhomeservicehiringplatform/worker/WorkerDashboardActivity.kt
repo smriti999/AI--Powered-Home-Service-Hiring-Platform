@@ -1,4 +1,4 @@
-package np.com.ai_poweredhomeservicehiringplatform.admin
+package np.com.ai_poweredhomeservicehiringplatform.worker
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,8 +18,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,12 +40,12 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
-class AdminWorkManagementActivity : ComponentActivity() {
+class WorkerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        if (!AppStorage.isAdminLoggedIn(this)) {
+        if (!AppStorage.isWorkerLoggedIn(this)) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -56,35 +53,60 @@ class AdminWorkManagementActivity : ComponentActivity() {
 
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
-                AdminWorkManagementScreen(
-                    onDashboardClick = { startActivity(Intent(this, AdminDashboardActivity::class.java)) },
-                    onRequestsClick = { startActivity(Intent(this, AdminRequestsActivity::class.java)) },
-                    onWorkersClick = { startActivity(Intent(this, AdminWorkerManagementActivity::class.java)) },
-                    onUsersClick = { startActivity(Intent(this, AdminUserManagementActivity::class.java)) }
+                WorkerDashboardScreen(
+                    onLogout = {
+                        AppStorage.setWorkerLoggedIn(this, false, null)
+                        startActivity(Intent(this, LoginActivity::class.java))
+                        finish()
+                    }
                 )
             }
         }
     }
 }
 
+private fun matchesProfession(workName: String, profession: String): Boolean {
+    val name = workName.lowercase()
+    val prof = profession.lowercase()
+
+    val keywords = when {
+        prof.contains("plumbing") -> listOf("plumb")
+        prof.contains("clean") -> listOf("clean")
+        prof.contains("electric") -> listOf("electric")
+        prof.contains("carp") -> listOf("carp", "wood")
+        prof.contains("ac") || prof.contains("appliance") -> listOf("ac", "appliance", "repair")
+        prof.contains("paint") -> listOf("paint")
+        prof.contains("pest") -> listOf("pest")
+        prof.contains("handyman") -> listOf("handyman")
+        prof.contains("relocation") || prof.contains("moving") -> listOf("relocation", "moving", "shift")
+        prof.contains("maid") || prof.contains("cook") -> listOf("maid", "cook", "cooking")
+        else -> prof.split(" ").filter { it.isNotBlank() }
+    }
+
+    return keywords.any { keyword -> keyword.isNotBlank() && name.contains(keyword) }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AdminWorkManagementScreen(
-    onDashboardClick: () -> Unit,
-    onRequestsClick: () -> Unit,
-    onWorkersClick: () -> Unit,
-    onUsersClick: () -> Unit
+private fun WorkerDashboardScreen(
+    onLogout: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
+
+    val workerEmail = AppStorage.currentWorkerEmail(context).orEmpty()
+    val workers = remember { AppStorage.loadWorkers(context) }
+    val currentWorker = workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }
+    val profession = currentWorker?.profession.orEmpty()
+
+    val works = remember { AppStorage.loadWorks(context) }
 
     val filteredWorks = works.filter { work ->
-        val query = searchQuery.trim()
-        query.isBlank() ||
-            work.workName.contains(query, ignoreCase = true) ||
-            work.detail.contains(query, ignoreCase = true) ||
-            (work.workerName?.contains(query, ignoreCase = true) == true)
+        work.status == WorkStatus.Pending &&
+            matchesProfession(work.workName, profession) &&
+            (searchQuery.trim().isBlank() ||
+                work.workName.contains(searchQuery.trim(), ignoreCase = true) ||
+                work.detail.contains(searchQuery.trim(), ignoreCase = true))
     }
 
     fun statusColor(status: WorkStatus): Color {
@@ -99,17 +121,14 @@ private fun AdminWorkManagementScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Work Management") },
+                title = { Text(text = "Worker Dashboard") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    Row {
-                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onRequestsClick) { Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onUsersClick) { Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary) }
+                    TextButton(onClick = onLogout) {
+                        Text(text = "Logout", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             )
@@ -121,27 +140,31 @@ private fun AdminWorkManagementScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
+            Text(
+                text = profession.ifBlank { "Profession: -" },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.padding(top = 10.dp))
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text(text = "Search work.") },
+                placeholder = { Text(text = "Search jobs...") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.padding(top = 12.dp))
 
-            Text(text = "Total works: ${works.size}")
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (works.isEmpty()) {
+            if (profession.isBlank()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "No works available")
+                    Text(text = "No profession found for this worker")
                 }
             } else if (filteredWorks.isEmpty()) {
                 Column(
@@ -149,7 +172,7 @@ private fun AdminWorkManagementScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "No works found")
+                    Text(text = "No jobs available for $profession")
                 }
             } else {
                 Column(
@@ -160,15 +183,11 @@ private fun AdminWorkManagementScreen(
                 ) {
                     filteredWorks.forEach { work: WorkUiModel ->
                         OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp)
-                            ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         text = work.workName,
@@ -183,39 +202,13 @@ private fun AdminWorkManagementScreen(
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.padding(top = 6.dp))
 
                                 Text(
                                     text = work.detail,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                val workerLabel = when (work.status) {
-                                    WorkStatus.Pending -> "Worker: Not assigned"
-                                    WorkStatus.Booked -> "Worker: ${work.workerName ?: "Not assigned"}"
-                                    WorkStatus.Completed -> "Completed by: ${work.workerName ?: "Unknown"}"
-                                }
-
-                                Text(text = workerLabel, style = MaterialTheme.typography.bodySmall)
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Button(
-                                    onClick = {
-                                        val updated = works.filterNot { it.id == work.id }
-                                        works = updated
-                                        AppStorage.saveWorks(context, updated)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFD32F2F),
-                                        contentColor = Color.White
-                                    )
-                                ) {
-                                    Text(text = "Delete")
-                                }
                             }
                         }
                     }
@@ -224,3 +217,4 @@ private fun AdminWorkManagementScreen(
         }
     }
 }
+

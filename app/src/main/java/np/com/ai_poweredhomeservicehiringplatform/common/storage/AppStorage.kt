@@ -27,6 +27,8 @@ object AppStorage {
     private const val KEY_ADMIN_LOGGED_IN = "admin_logged_in"
     private const val KEY_USER_LOGGED_IN = "user_logged_in"
     private const val KEY_CURRENT_USER_EMAIL = "current_user_email"
+    private const val KEY_WORKER_LOGGED_IN = "worker_logged_in"
+    private const val KEY_CURRENT_WORKER_EMAIL = "current_worker_email"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -70,6 +72,21 @@ object AppStorage {
 
     fun currentUserEmail(context: Context): String? {
         return prefs(context).getString(KEY_CURRENT_USER_EMAIL, null)
+    }
+
+    fun setWorkerLoggedIn(context: Context, loggedIn: Boolean, email: String?) {
+        prefs(context).edit()
+            .putBoolean(KEY_WORKER_LOGGED_IN, loggedIn)
+            .putString(KEY_CURRENT_WORKER_EMAIL, email)
+            .apply()
+    }
+
+    fun isWorkerLoggedIn(context: Context): Boolean {
+        return prefs(context).getBoolean(KEY_WORKER_LOGGED_IN, false)
+    }
+
+    fun currentWorkerEmail(context: Context): String? {
+        return prefs(context).getString(KEY_CURRENT_WORKER_EMAIL, null)
     }
 
     fun loadUsers(context: Context): List<UserUiModel> {
