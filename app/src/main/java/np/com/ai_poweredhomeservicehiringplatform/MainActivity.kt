@@ -405,7 +405,12 @@ class MainActivity : ComponentActivity() {
                             onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
                             onWorkersClick = { openAdmin(AppScreen.AdminWorkerManagement) },
                             onUsersClick = { openAdmin(AppScreen.AdminUserManagement) },
-                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) }
+                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) },
+                            onLogoutClick = {
+                                isAdminLoggedIn = false
+                                pendingAdminDestination = null
+                                screen = AppScreen.AuthLogin
+                            }
                         )
                     }
 
@@ -1593,7 +1598,8 @@ fun AdminDashboardScreen(
     onRequestsClick: () -> Unit = { },
     onWorkersClick: () -> Unit = { },
     onUsersClick: () -> Unit = { },
-    onWorksClick: () -> Unit = { }
+    onWorksClick: () -> Unit = { },
+    onLogoutClick: () -> Unit = { }
 ) {
     val totalUsers = users.size
     val activeWorkers = workers.count { it.status.equals("Active", ignoreCase = true) }
@@ -1715,6 +1721,17 @@ fun AdminDashboardScreen(
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Button(
+                onClick = onLogoutClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+            ) {
+                Text(text = "LOGOUT")
             }
         }
     }
