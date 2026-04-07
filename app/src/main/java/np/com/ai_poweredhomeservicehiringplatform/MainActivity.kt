@@ -138,6 +138,9 @@ private fun saveUsers(context: Context, users: List<UserUiModel>) {
 private enum class AppScreen {
     AuthLogin,
     AuthSignUp,
+    UserHome,
+    UserCreateJob,
+    UserJobs,
     AdminLogin,
     AdminDashboard,
     AdminRequests,
@@ -198,6 +201,17 @@ data class WorkUiModel(
     val status: WorkStatus
 )
 
+data class UserJobUiModel(
+    val id: Int,
+    val userEmail: String,
+    val service: String,
+    val description: String,
+    val location: String,
+    val streetHomeNumber: String,
+    val alternativeLocation: String,
+    val status: WorkStatus
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -211,8 +225,11 @@ class MainActivity : ComponentActivity() {
                 val initialUsers = remember { loadUsers(context) }
                 var users by remember { mutableStateOf(initialUsers) }
                 var works by remember { mutableStateOf(listOf<WorkUiModel>()) }
+                var userJobs by remember { mutableStateOf(listOf<UserJobUiModel>()) }
 
                 var isAdminLoggedIn by rememberSaveable { mutableStateOf(false) }
+                var isUserLoggedIn by rememberSaveable { mutableStateOf(false) }
+                var currentUserEmail by rememberSaveable { mutableStateOf<String?>(null) }
                 var screen by rememberSaveable { mutableStateOf(AppScreen.AuthLogin) }
                 var pendingAdminDestination by rememberSaveable { mutableStateOf<AppScreen?>(null) }
 
@@ -232,11 +249,19 @@ class MainActivity : ComponentActivity() {
                     AppScreen.AdminUserManagement,
                     AppScreen.AdminWorkManagement
                 )
-                val effectiveScreen = if (!isAdminLoggedIn && screen in adminOnlyScreens) {
-                    pendingAdminDestination = screen
-                    AppScreen.AdminLogin
-                } else {
-                    screen
+                val userOnlyScreens = setOf(
+                    AppScreen.UserHome,
+                    AppScreen.UserCreateJob,
+                    AppScreen.UserJobs
+                )
+                val effectiveScreen = when {
+                    !isAdminLoggedIn && screen in adminOnlyScreens -> {
+                        pendingAdminDestination = screen
+                        AppScreen.AdminLogin
+                    }
+
+                    !isUserLoggedIn && screen in userOnlyScreens -> AppScreen.AuthLogin
+                    else -> screen
                 }
 
                 when (effectiveScreen) {
@@ -250,6 +275,11 @@ class MainActivity : ComponentActivity() {
                                 val trimmedEmail = email.trim()
                                 val hashedPassword = sha256Hex(password)
                                 users.any { it.email.equals(trimmedEmail, ignoreCase = true) && it.passwordHash == hashedPassword }
+                            },
+                            onLoginSuccess = { email ->
+                                isUserLoggedIn = true
+                                currentUserEmail = email
+                                screen = AppScreen.UserHome
                             },
                             onSignUpClick = {
                                 screen = AppScreen.AuthSignUp
@@ -279,6 +309,77 @@ class MainActivity : ComponentActivity() {
                                 screen = AppScreen.AuthLogin
                             },
                             onBackToLoginClick = { screen = AppScreen.AuthLogin }
+                        )
+                    }
+
+                    AppScreen.UserHome -> {
+                        val email = currentUserEmail ?: ""
+                        UserHomeScreen(
+                            userEmail = email,
+                            onCreateJobClick = { screen = AppScreen.UserCreateJob },
+                            onMyJobsClick = { screen = AppScreen.UserJobs },
+                            onLogoutClick = {
+                                isUserLoggedIn = false
+                                currentUserEmail = null
+                                screen = AppScreen.AuthLogin
+                            }
+                        )
+                    }
+
+                    AppScreen.UserCreateJob -> {
+                        val email = currentUserEmail ?: ""
+                        UserCreateJobScreen(
+                            userEmail = email,
+                            onBackClick = { screen = AppScreen.UserHome },
+                            onSubmit = { service, description, location, streetHomeNumber, alternativeLocation ->
+                                val nextJobId = (userJobs.maxOfOrNull { it.id } ?: 0) + 1
+                                val nextWorkId = (works.maxOfOrNull { it.id } ?: 0) + 1
+
+                                val newJob = UserJobUiModel(
+                                    id = nextJobId,
+                                    userEmail = email,
+                                    service = service,
+                                    description = description,
+                                    location = location,
+                                    streetHomeNumber = streetHomeNumber,
+                                    alternativeLocation = alternativeLocation,
+                                    status = WorkStatus.Pending
+                                )
+                                userJobs = userJobs + newJob
+
+                                val detailText = buildString {
+                                    append("User: ")
+                                    append(email)
+                                    append("\nLocation: ")
+                                    append(location)
+                                    append("\nStreet/Home: ")
+                                    append(streetHomeNumber)
+                                    if (alternativeLocation.isNotBlank()) {
+                                        append("\nAlt: ")
+                                        append(alternativeLocation)
+                                    }
+                                    append("\n\n")
+                                    append(description)
+                                }
+                                works = works + WorkUiModel(
+                                    id = nextWorkId,
+                                    workName = service,
+                                    detail = detailText,
+                                    workerName = null,
+                                    status = WorkStatus.Pending
+                                )
+
+                                screen = AppScreen.UserJobs
+                            }
+                        )
+                    }
+
+                    AppScreen.UserJobs -> {
+                        val email = currentUserEmail ?: ""
+                        UserJobsScreen(
+                            userEmail = email,
+                            jobs = userJobs.filter { it.userEmail.equals(email, ignoreCase = true) },
+                            onBackClick = { screen = AppScreen.UserHome }
                         )
                     }
 
@@ -376,6 +477,7 @@ fun AuthLoginScreen(
     modifier: Modifier = Modifier,
     onAdminLogoClick: () -> Unit = { },
     onLogin: (email: String, password: String) -> Boolean = { _, _ -> false },
+    onLoginSuccess: (email: String) -> Unit = { },
     onSignUpClick: () -> Unit = { }
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -477,6 +579,7 @@ fun AuthLoginScreen(
 
                     errorMessage = null
                     isLoginSuccessful = true
+                    onLoginSuccess(trimmedEmail)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -508,6 +611,382 @@ fun AuthLoginScreen(
 fun AuthLoginPreview() {
     AIPoweredHomeServiceHiringPlatformTheme {
         AuthLoginScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserHomeScreen(
+    modifier: Modifier = Modifier,
+    userEmail: String,
+    onCreateJobClick: () -> Unit = { },
+    onMyJobsClick: () -> Unit = { },
+    onLogoutClick: () -> Unit = { }
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Home") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    TextButton(onClick = onLogoutClick) {
+                        Text(text = "Logout", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Welcome",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = userEmail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Button(
+                onClick = onCreateJobClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .height(46.dp)
+            ) {
+                Text(text = "CREATE JOB")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onMyJobsClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .height(46.dp)
+            ) {
+                Text(text = "MY JOBS")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserCreateJobScreen(
+    modifier: Modifier = Modifier,
+    userEmail: String,
+    onBackClick: () -> Unit = { },
+    onSubmit: (
+        service: String,
+        description: String,
+        location: String,
+        streetHomeNumber: String,
+        alternativeLocation: String
+    ) -> Unit = { _, _, _, _, _ -> }
+) {
+    var service by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var location by rememberSaveable { mutableStateOf("") }
+    var streetHomeNumber by rememberSaveable { mutableStateOf("") }
+    var alternativeLocation by rememberSaveable { mutableStateOf("") }
+    var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val locationOptions = remember { listOf("Kathmandu", "Bhaktapur", "Lalitpur") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Create Job") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    TextButton(onClick = onBackClick) {
+                        Text(text = "Back", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = userEmail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            OutlinedTextField(
+                value = service,
+                onValueChange = {
+                    service = it
+                    errorMessage = null
+                },
+                placeholder = { Text(text = "Service (e.g. Plumber)") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = {
+                    description = it
+                    errorMessage = null
+                },
+                placeholder = { Text(text = "Job Description") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+            ) {
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { },
+                    readOnly = true,
+                    placeholder = { Text(text = "Location") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isLocationMenuExpanded = true },
+                    trailingIcon = {
+                        TextButton(onClick = { isLocationMenuExpanded = true }) {
+                            Text(text = "▼")
+                        }
+                    }
+                )
+
+                DropdownMenu(
+                    expanded = isLocationMenuExpanded,
+                    onDismissRequest = { isLocationMenuExpanded = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    locationOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(text = option) },
+                            onClick = {
+                                location = option
+                                isLocationMenuExpanded = false
+                                errorMessage = null
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (location.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = streetHomeNumber,
+                    onValueChange = {
+                        streetHomeNumber = it
+                        errorMessage = null
+                    },
+                    placeholder = { Text(text = "Street, Home Number") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = alternativeLocation,
+                    onValueChange = {
+                        alternativeLocation = it
+                        errorMessage = null
+                    },
+                    placeholder = { Text(text = "Alternative Location") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            Button(
+                onClick = {
+                    val s = service.trim()
+                    val d = description.trim()
+                    val st = streetHomeNumber.trim()
+                    val alt = alternativeLocation.trim()
+
+                    if (s.isBlank() || d.isBlank() || location.isBlank() || st.isBlank()) {
+                        errorMessage = "All fields are required"
+                        return@Button
+                    }
+
+                    errorMessage = null
+                    onSubmit(s, d, location, st, alt)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .height(46.dp)
+            ) {
+                Text(text = "SUBMIT")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserJobsScreen(
+    modifier: Modifier = Modifier,
+    userEmail: String,
+    jobs: List<UserJobUiModel>,
+    onBackClick: () -> Unit = { }
+) {
+    fun statusColor(status: WorkStatus): Color {
+        return when (status) {
+            WorkStatus.Pending -> Color(0xFFF9A825)
+            WorkStatus.Booked -> Color(0xFF1565C0)
+            WorkStatus.Completed -> Color(0xFF2E7D32)
+        }
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "My Jobs") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                actions = {
+                    TextButton(onClick = onBackClick) {
+                        Text(text = "Back", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                text = userEmail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (jobs.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "No jobs yet")
+                }
+            } else {
+                jobs.forEach { job ->
+                    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = job.service,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = job.status.name,
+                                    color = statusColor(job.status),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = job.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Location: ${job.location}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Street/Home: ${job.streetHomeNumber}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            if (job.alternativeLocation.isNotBlank()) {
+                                Text(
+                                    text = "Alt: ${job.alternativeLocation}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
     }
 }
 
