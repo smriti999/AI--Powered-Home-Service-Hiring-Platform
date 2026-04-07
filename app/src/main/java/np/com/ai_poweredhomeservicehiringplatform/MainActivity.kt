@@ -319,7 +319,6 @@ class MainActivity : ComponentActivity() {
                                 val updatedUsers = users + newUser
                                 users = updatedUsers
                                 saveUsers(context, updatedUsers)
-                                screen = AppScreen.AuthLogin
                             },
                             onBackToLoginClick = { screen = AppScreen.AuthLogin }
                         )
@@ -1051,6 +1050,7 @@ fun AuthSignUpScreen(
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var workerErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var showWorkerThankYouDialog by rememberSaveable { mutableStateOf(false) }
+    var showUserThankYouDialog by rememberSaveable { mutableStateOf(false) }
     var workerCvUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var workerCvFileName by rememberSaveable { mutableStateOf<String?>(null) }
     var workerCvSizeBytes by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -1385,6 +1385,7 @@ fun AuthSignUpScreen(
 
                         errorMessage = null
                         onUserSignUp(trimmedName, trimmedEmail, trimmedPhone, location, trimmedStreet, trimmedAlt, password)
+                        showUserThankYouDialog = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1689,6 +1690,23 @@ fun AuthSignUpScreen(
                 TextButton(
                     onClick = {
                         showWorkerThankYouDialog = false
+                        onBackToLoginClick()
+                    }
+                ) {
+                    Text(text = "OK")
+                }
+            }
+        )
+    }
+    if (showUserThankYouDialog) {
+        AlertDialog(
+            onDismissRequest = { showUserThankYouDialog = false },
+            title = { Text(text = "Thank you") },
+            text = { Text(text = "Thank you for signing up.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUserThankYouDialog = false
                         onBackToLoginClick()
                     }
                 ) {
