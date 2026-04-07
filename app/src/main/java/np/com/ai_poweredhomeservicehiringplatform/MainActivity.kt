@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,6 +87,7 @@ private fun isSeededAdminCredentialValid(
 }
 
 private enum class AppScreen {
+    AuthLogin,
     AdminLogin,
     AdminDashboard,
     AdminRequests,
@@ -148,14 +150,52 @@ class MainActivity : ComponentActivity() {
                 var works by remember { mutableStateOf(listOf<WorkUiModel>()) }
 
                 var isAdminLoggedIn by rememberSaveable { mutableStateOf(false) }
-                var screen by rememberSaveable { mutableStateOf(AppScreen.AdminLogin) }
-                val guardedScreen = if (!isAdminLoggedIn) AppScreen.AdminLogin else screen
-                when (guardedScreen) {
+                var screen by rememberSaveable { mutableStateOf(AppScreen.AuthLogin) }
+                var pendingAdminDestination by rememberSaveable { mutableStateOf<AppScreen?>(null) }
+
+                fun openAdmin(destination: AppScreen) {
+                    if (isAdminLoggedIn) {
+                        screen = destination
+                    } else {
+                        pendingAdminDestination = destination
+                        screen = AppScreen.AdminLogin
+                    }
+                }
+
+                val adminOnlyScreens = setOf(
+                    AppScreen.AdminDashboard,
+                    AppScreen.AdminRequests,
+                    AppScreen.AdminWorkerManagement,
+                    AppScreen.AdminUserManagement,
+                    AppScreen.AdminWorkManagement
+                )
+                val effectiveScreen = if (!isAdminLoggedIn && screen in adminOnlyScreens) {
+                    pendingAdminDestination = screen
+                    AppScreen.AdminLogin
+                } else {
+                    screen
+                }
+
+                when (effectiveScreen) {
+                    AppScreen.AuthLogin -> {
+                        AuthLoginScreen(
+                            onAdminLogoClick = {
+                                pendingAdminDestination = AppScreen.AdminDashboard
+                                screen = AppScreen.AdminLogin
+                            }
+                        )
+                    }
+
                     AppScreen.AdminLogin -> {
                         AdminLoginScreen(
+                            onLogoClick = {
+                                pendingAdminDestination = null
+                                screen = AppScreen.AuthLogin
+                            },
                             onLoginClick = { _, _ ->
                                 isAdminLoggedIn = true
-                                screen = AppScreen.AdminDashboard
+                                screen = pendingAdminDestination ?: AppScreen.AdminDashboard
+                                pendingAdminDestination = null
                             }
                         )
                     }
@@ -165,10 +205,10 @@ class MainActivity : ComponentActivity() {
                             users = users,
                             workers = workers,
                             works = works,
-                            onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement },
-                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
+                            onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
+                            onWorkersClick = { openAdmin(AppScreen.AdminWorkerManagement) },
+                            onUsersClick = { openAdmin(AppScreen.AdminUserManagement) },
+                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) }
                         )
                     }
 
@@ -180,10 +220,10 @@ class MainActivity : ComponentActivity() {
                                     if (existing.id == requestId) existing.copy(decision = decision) else existing
                                 }
                             },
-                            onDashboardClick = { screen = AppScreen.AdminDashboard },
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement },
-                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
+                            onDashboardClick = { openAdmin(AppScreen.AdminDashboard) },
+                            onWorkersClick = { openAdmin(AppScreen.AdminWorkerManagement) },
+                            onUsersClick = { openAdmin(AppScreen.AdminUserManagement) },
+                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) }
                         )
                     }
 
@@ -193,10 +233,10 @@ class MainActivity : ComponentActivity() {
                             onDeleteWorker = { workerId ->
                                 workers = workers.filterNot { it.id == workerId }
                             },
-                            onDashboardClick = { screen = AppScreen.AdminDashboard },
-                            onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement },
-                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
+                            onDashboardClick = { openAdmin(AppScreen.AdminDashboard) },
+                            onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
+                            onUsersClick = { openAdmin(AppScreen.AdminUserManagement) },
+                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) }
                         )
                     }
 
@@ -206,20 +246,20 @@ class MainActivity : ComponentActivity() {
                             onDeleteUser = { userId ->
                                 users = users.filterNot { it.id == userId }
                             },
-                            onDashboardClick = { screen = AppScreen.AdminDashboard },
-                            onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
-                            onWorksClick = { screen = AppScreen.AdminWorkManagement }
+                            onDashboardClick = { openAdmin(AppScreen.AdminDashboard) },
+                            onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
+                            onWorkersClick = { openAdmin(AppScreen.AdminWorkerManagement) },
+                            onWorksClick = { openAdmin(AppScreen.AdminWorkManagement) }
                         )
                     }
 
                     AppScreen.AdminWorkManagement -> {
                         AdminWorkManagementScreen(
                             works = works,
-                            onDashboardClick = { screen = AppScreen.AdminDashboard },
-                            onRequestsClick = { screen = AppScreen.AdminRequests },
-                            onWorkersClick = { screen = AppScreen.AdminWorkerManagement },
-                            onUsersClick = { screen = AppScreen.AdminUserManagement }
+                            onDashboardClick = { openAdmin(AppScreen.AdminDashboard) },
+                            onRequestsClick = { openAdmin(AppScreen.AdminRequests) },
+                            onWorkersClick = { openAdmin(AppScreen.AdminWorkerManagement) },
+                            onUsersClick = { openAdmin(AppScreen.AdminUserManagement) }
                         )
                     }
 
@@ -234,8 +274,112 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AuthLoginScreen(
+    modifier: Modifier = Modifier,
+    onAdminLogoClick: () -> Unit = { }
+) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Login") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(modifier = Modifier.height(52.dp))
+
+            Text(
+                text = "Welcome",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clickable(onClick = onAdminLogoClick)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                placeholder = { Text(text = "Email") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                placeholder = { Text(text = "Password") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Button(
+                onClick = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+                    .height(44.dp)
+            ) {
+                Text(text = "LOGIN")
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Or sign up with Google",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AuthLoginPreview() {
+    AIPoweredHomeServiceHiringPlatformTheme {
+        AuthLoginScreen()
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun AdminLoginScreen(
     modifier: Modifier = Modifier,
+    onLogoClick: () -> Unit = { },
     onLoginClick: (username: String, password: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
@@ -276,7 +420,9 @@ fun AdminLoginScreen(
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = null,
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier
+                    .size(120.dp)
+                    .clickable(onClick = onLogoClick)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
