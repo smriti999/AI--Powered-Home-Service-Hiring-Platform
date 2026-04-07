@@ -1046,7 +1046,6 @@ fun AuthSignUpScreen(
     var profession by rememberSaveable { mutableStateOf("") }
     var experienceYears by rememberSaveable { mutableStateOf("") }
     var gender by rememberSaveable { mutableStateOf("") }
-    var bio by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
@@ -1341,86 +1340,21 @@ fun AuthSignUpScreen(
                 }
             } else {
                 OutlinedTextField(
-                    value = phoneNumber,
-                    onValueChange = { phoneNumber = normalizePhoneNumber(it) },
-                    placeholder = { Text(text = "Phone Number") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 360.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 360.dp)
-                ) {
-                    OutlinedTextField(
-                        value = profession,
-                        onValueChange = { },
-                        readOnly = true,
-                        placeholder = { Text(text = "Profession") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isProfessionMenuExpanded = true },
-                        trailingIcon = {
-                            TextButton(onClick = { isProfessionMenuExpanded = true }) {
-                                Text(text = "▼")
-                            }
-                        }
-                    )
-
-                    DropdownMenu(
-                        expanded = isProfessionMenuExpanded,
-                        onDismissRequest = { isProfessionMenuExpanded = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        professionOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(text = option) },
-                                onClick = {
-                                    profession = option
-                                    isProfessionMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = experienceYears,
-                    onValueChange = { experienceYears = it },
-                    placeholder = { Text(text = "Experience (Years)") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 360.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = { Text(text = "Password") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 360.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
                     value = email,
                     onValueChange = { email = normalizeGmailEmail(it) },
                     placeholder = { Text(text = "Email") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = normalizePhoneNumber(it) },
+                    placeholder = { Text(text = "Phone Number") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1507,10 +1441,64 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                ) {
+                    OutlinedTextField(
+                        value = profession,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Profession") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isProfessionMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isProfessionMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isProfessionMenuExpanded,
+                        onDismissRequest = { isProfessionMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        professionOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    profession = option
+                                    isProfessionMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    placeholder = { Text(text = "Bio") },
+                    value = experienceYears,
+                    onValueChange = { experienceYears = it },
+                    placeholder = { Text(text = "Experience (Years)") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text(text = "Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
