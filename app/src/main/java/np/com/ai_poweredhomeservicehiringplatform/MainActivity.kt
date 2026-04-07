@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -409,6 +412,8 @@ fun AuthSignUpScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var phoneNumber by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
+    var streetHomeNumber by rememberSaveable { mutableStateOf("") }
+    var alternativeLocation by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var confirmPassword by rememberSaveable { mutableStateOf("") }
 
@@ -418,6 +423,8 @@ fun AuthSignUpScreen(
     var bio by rememberSaveable { mutableStateOf("") }
 
     val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
+    val locationOptions = remember { listOf("Kathmandu", "Bhaktapur", "Lalitpur") }
+    var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -534,15 +541,69 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    placeholder = { Text(text = "Location") },
-                    singleLine = true,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Location") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isLocationMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isLocationMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isLocationMenuExpanded,
+                        onDismissRequest = { isLocationMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        locationOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    location = option
+                                    isLocationMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (location.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = streetHomeNumber,
+                        onValueChange = { streetHomeNumber = it },
+                        placeholder = { Text(text = "Street, Home Number") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 360.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = alternativeLocation,
+                        onValueChange = { alternativeLocation = it },
+                        placeholder = { Text(text = "Alternative Location") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 360.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -643,15 +704,69 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    placeholder = { Text(text = "Location") },
-                    singleLine = true,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Location") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isLocationMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isLocationMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isLocationMenuExpanded,
+                        onDismissRequest = { isLocationMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        locationOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    location = option
+                                    isLocationMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (location.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = streetHomeNumber,
+                        onValueChange = { streetHomeNumber = it },
+                        placeholder = { Text(text = "Street, Home Number") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 360.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = alternativeLocation,
+                        onValueChange = { alternativeLocation = it },
+                        placeholder = { Text(text = "Alternative Location") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 360.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
