@@ -1051,7 +1051,22 @@ fun AuthSignUpScreen(
 
     val titleText = if (role == SignUpRole.User) "User Sign Up" else "Worker Registration"
     val locationOptions = remember { listOf("Kathmandu", "Bhaktapur", "Lalitpur") }
+    val professionOptions = remember {
+        listOf(
+            "Cleaning Services",
+            "Plumbing Services",
+            "Electrical Services",
+            "Carpentry Services",
+            "AC & Appliance Repair",
+            "Painting Services",
+            "Pest Control",
+            "Handyman Services",
+            "Relocation Services",
+            "Maid & Cooking Services"
+        )
+    }
     var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var isProfessionMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -1337,15 +1352,43 @@ fun AuthSignUpScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = profession,
-                    onValueChange = { profession = it },
-                    placeholder = { Text(text = "Profession (e.g. Plumber)") },
-                    singleLine = true,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 360.dp)
-                )
+                ) {
+                    OutlinedTextField(
+                        value = profession,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Profession") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isProfessionMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isProfessionMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isProfessionMenuExpanded,
+                        onDismissRequest = { isProfessionMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        professionOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    profession = option
+                                    isProfessionMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
