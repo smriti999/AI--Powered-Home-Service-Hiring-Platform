@@ -5,6 +5,7 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiMod
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentMethod
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
+import np.com.ai_poweredhomeservicehiringplatform.common.model.RatingUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
@@ -29,6 +30,7 @@ object AppStorage {
     private const val KEY_WORKERS_JSON = "workers_json"
     private const val KEY_NOTIFICATIONS_JSON = "notifications_json"
     private const val KEY_PAYMENTS_JSON = "payments_json"
+    private const val KEY_RATINGS_JSON = "ratings_json"
 
     private const val KEY_ADMIN_LOGGED_IN = "admin_logged_in"
     private const val KEY_USER_LOGGED_IN = "user_logged_in"
@@ -286,6 +288,45 @@ object AppStorage {
             arr.put(obj)
         }
         prefs(context).edit().putString(KEY_PAYMENTS_JSON, arr.toString()).apply()
+    }
+
+    fun loadRatings(context: Context): List<RatingUiModel> {
+        val raw = prefs(context).getString(KEY_RATINGS_JSON, "[]") ?: "[]"
+        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+        val result = ArrayList<RatingUiModel>(arr.length())
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            result.add(
+                RatingUiModel(
+                    id = obj.optInt("id", 0),
+                    workId = obj.optInt("workId", 0),
+                    userEmail = obj.optString("userEmail", ""),
+                    workerName = obj.optString("workerName", ""),
+                    profession = obj.optString("profession", ""),
+                    stars = obj.optInt("stars", 0),
+                    review = obj.optString("review", ""),
+                    timestampMillis = obj.optLong("timestampMillis", 0L)
+                )
+            )
+        }
+        return result
+    }
+
+    fun saveRatings(context: Context, ratings: List<RatingUiModel>) {
+        val arr = JSONArray()
+        ratings.forEach { r ->
+            val obj = JSONObject()
+            obj.put("id", r.id)
+            obj.put("workId", r.workId)
+            obj.put("userEmail", r.userEmail)
+            obj.put("workerName", r.workerName)
+            obj.put("profession", r.profession)
+            obj.put("stars", r.stars)
+            obj.put("review", r.review)
+            obj.put("timestampMillis", r.timestampMillis)
+            arr.put(obj)
+        }
+        prefs(context).edit().putString(KEY_RATINGS_JSON, arr.toString()).apply()
     }
 
     fun loadWorkerApplications(context: Context): List<WorkerApplicationUiModel> {

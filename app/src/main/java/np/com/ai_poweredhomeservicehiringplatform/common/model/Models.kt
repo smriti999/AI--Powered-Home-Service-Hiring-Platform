@@ -104,3 +104,14 @@ data class PaymentUiModel(
     val status: PaymentStatus,
     val timestampMillis: Long
 )
+
+data class RatingUiModel(
+    val id: Int,
+    val workId: Int,
+    val userEmail: String,
+    val workerName: String,
+    val profession: String,
+    val stars: Int,
+    val review: String,
+    val timestampMillis: Long
+)
