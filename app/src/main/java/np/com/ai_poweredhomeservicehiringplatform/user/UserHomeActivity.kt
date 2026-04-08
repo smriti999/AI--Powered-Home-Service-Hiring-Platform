@@ -55,6 +55,7 @@ class UserHomeActivity : ComponentActivity() {
                     onCreateJobClick = { startActivity(Intent(this, UserCreateJobActivity::class.java)) },
                     onMyJobsClick = { startActivity(Intent(this, UserJobsActivity::class.java)) },
                     onNotificationsClick = { startActivity(Intent(this, UserNotificationsActivity::class.java)) },
+                    onProfileClick = { startActivity(Intent(this, UserProfileActivity::class.java)) },
                     onCategoryClick = { category ->
                         if (category == "Others") {
                             startActivity(Intent(this, UserCategoriesActivity::class.java))
@@ -82,6 +83,7 @@ private fun UserHomeScreen(
     onCreateJobClick: () -> Unit,
     onMyJobsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
+    onProfileClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -101,11 +103,11 @@ private fun UserHomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
+                    TextButton(onClick = onProfileClick) {
+                        Text(text = "Profile", color = MaterialTheme.colorScheme.onPrimary)
+                    }
                     TextButton(onClick = onNotificationsClick) {
                         Text(text = "Notifications", color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                    TextButton(onClick = onLogoutClick) {
-                        Text(text = "Logout", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             )

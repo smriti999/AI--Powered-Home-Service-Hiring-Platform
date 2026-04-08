@@ -39,6 +39,8 @@
         <activity android:name=".user.UserPaymentActivity" android:exported="false" />
         <activity android:name=".user.UserNotificationsActivity" android:exported="false" />
         <activity android:name=".user.UserSignUpActivity" android:exported="false" />
+        <activity android:name=".user.UserRateServiceActivity" android:exported="false" />
+        <activity android:name=".user.UserProfileActivity" android:exported="false" />
 
         <activity android:name=".worker.WorkerRegistrationActivity" android:exported="false" />
         <activity android:name=".worker.WorkerDashboardActivity" android:exported="false" />
