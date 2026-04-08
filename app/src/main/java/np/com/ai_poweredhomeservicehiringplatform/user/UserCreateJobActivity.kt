@@ -7,7 +7,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
@@ -63,7 +66,7 @@ class UserCreateJobActivity : ComponentActivity() {
                     userEmail = email,
                     presetService = presetService,
                     onBackClick = { finish() },
-                    onSubmit = { service, description, location, streetHomeNumber, alternativeLocation ->
+                    onSubmit = { service, description, _, location ->
                         val jobs = AppStorage.loadUserJobs(this)
                         val works = AppStorage.loadWorks(this)
 
@@ -76,8 +79,8 @@ class UserCreateJobActivity : ComponentActivity() {
                             service = service,
                             description = description,
                             location = location,
-                            streetHomeNumber = streetHomeNumber,
-                            alternativeLocation = alternativeLocation,
+                            streetHomeNumber = "",
+                            alternativeLocation = "",
                             status = WorkStatus.Pending
                         )
                         AppStorage.saveUserJobs(this, jobs + newJob)
@@ -87,12 +90,6 @@ class UserCreateJobActivity : ComponentActivity() {
                             append(email)
                             append("\nLocation: ")
                             append(location)
-                            append("\nStreet/Home: ")
-                            append(streetHomeNumber)
-                            if (alternativeLocation.isNotBlank()) {
-                                append("\nAlt: ")
-                                append(alternativeLocation)
-                            }
                             append("\n\n")
                             append(description)
                         }
@@ -125,25 +122,36 @@ private fun UserCreateJobScreen(
     onSubmit: (
         service: String,
         description: String,
-        location: String,
-        streetHomeNumber: String,
-        alternativeLocation: String
+        time: String,
+        location: String
     ) -> Unit
 ) {
-    var service by rememberSaveable { mutableStateOf(presetService) }
+    val serviceOptions = listOf(
+        "Cleaning Services",
+        "Plumbing Services",
+        "Electrical Services",
+        "Carpentry Services",
+        "AC & Appliance Repair",
+        "Painting Services",
+        "Pest Control",
+        "Handyman Services",
+        "Relocation Services",
+        "Maid & Cooking Services"
+    )
+
+    var service by rememberSaveable { mutableStateOf(presetService.ifBlank { "" }) }
+    var isServiceMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var description by rememberSaveable { mutableStateOf("") }
+    var time by rememberSaveable { mutableStateOf("") }
+    var isTimeMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var location by rememberSaveable { mutableStateOf("") }
-    var streetHomeNumber by rememberSaveable { mutableStateOf("") }
-    var alternativeLocation by rememberSaveable { mutableStateOf("") }
-    var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
-    val locationOptions = listOf("Kathmandu", "Bhaktapur", "Lalitpur")
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Create Job") },
+                title = { Text(text = "Worker neede") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -165,25 +173,53 @@ private fun UserCreateJobScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = userEmail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = "Job Details",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp),
+                fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            OutlinedTextField(
-                value = service,
-                onValueChange = {
-                    service = it
-                    errorMessage = null
-                },
-                placeholder = { Text(text = "Service (e.g. Plumber)") },
-                singleLine = true,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
-            )
+            ) {
+                OutlinedTextField(
+                    value = service,
+                    onValueChange = { },
+                    readOnly = true,
+                    placeholder = { Text(text = "Service category") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isServiceMenuExpanded = true },
+                    trailingIcon = {
+                        TextButton(onClick = { isServiceMenuExpanded = true }) {
+                            Text(text = "▼")
+                        }
+                    }
+                )
+
+                DropdownMenu(
+                    expanded = isServiceMenuExpanded,
+                    onDismissRequest = { isServiceMenuExpanded = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    serviceOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(text = option) },
+                            onClick = {
+                                service = option
+                                isServiceMenuExpanded = false
+                                errorMessage = null
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -193,82 +229,68 @@ private fun UserCreateJobScreen(
                     description = it
                     errorMessage = null
                 },
-                placeholder = { Text(text = "Job Description") },
+                placeholder = { Text(text = "Description") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
+                    .height(120.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = 420.dp)
+                    .widthIn(max = 420.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = time,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Time") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isTimeMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isTimeMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isTimeMenuExpanded,
+                        onDismissRequest = { isTimeMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        (0..23).forEach { hour ->
+                            val label = String.format("%02d:00", hour)
+                            DropdownMenuItem(
+                                text = { Text(text = label) },
+                                onClick = {
+                                    time = label
+                                    isTimeMenuExpanded = false
+                                    errorMessage = null
+                                }
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = location,
-                    onValueChange = { },
-                    readOnly = true,
+                    onValueChange = {
+                        location = it
+                        errorMessage = null
+                    },
                     placeholder = { Text(text = "Location") },
                     singleLine = true,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isLocationMenuExpanded = true },
-                    trailingIcon = {
-                        TextButton(onClick = { isLocationMenuExpanded = true }) {
-                            Text(text = "▼")
-                        }
-                    }
-                )
-
-                DropdownMenu(
-                    expanded = isLocationMenuExpanded,
-                    onDismissRequest = { isLocationMenuExpanded = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    locationOptions.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(text = option) },
-                            onClick = {
-                                location = option
-                                isLocationMenuExpanded = false
-                                errorMessage = null
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (location.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = streetHomeNumber,
-                    onValueChange = {
-                        streetHomeNumber = it
-                        errorMessage = null
-                    },
-                    placeholder = { Text(text = "Street, Home Number") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 420.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = alternativeLocation,
-                    onValueChange = {
-                        alternativeLocation = it
-                        errorMessage = null
-                    },
-                    placeholder = { Text(text = "Alternative Location") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 420.dp)
+                        .weight(1f)
                 )
             }
 
@@ -283,23 +305,24 @@ private fun UserCreateJobScreen(
                 onClick = {
                     val s = service.trim()
                     val d = description.trim()
-                    val st = streetHomeNumber.trim()
-                    val alt = alternativeLocation.trim()
+                    val t = time.trim()
+                    val loc = location.trim()
 
-                    if (s.isBlank() || d.isBlank() || location.isBlank() || st.isBlank()) {
+                    if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank()) {
                         errorMessage = "All fields are required"
                         return@Button
                     }
 
                     errorMessage = null
-                    onSubmit(s, d, location, st, alt)
+                    val fullDescription = "Time: $t\n\n$d"
+                    onSubmit(s, fullDescription, t, loc)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 420.dp)
                     .height(46.dp)
             ) {
-                Text(text = "SUBMIT")
+                Text(text = "Post Job")
             }
         }
     }
