@@ -76,3 +76,10 @@ data class UserJobUiModel(
     val status: WorkStatus
 )
 
+data class NotificationUiModel(
+    val id: Int,
+    val userEmail: String,
+    val title: String,
+    val message: String,
+    val timestampMillis: Long
+)

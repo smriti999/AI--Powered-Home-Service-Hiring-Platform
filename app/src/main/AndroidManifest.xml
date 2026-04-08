@@ -36,6 +36,7 @@
         <activity android:name=".user.UserCategoriesActivity" android:exported="false" />
         <activity android:name=".user.UserCreateJobActivity" android:exported="false" />
         <activity android:name=".user.UserJobsActivity" android:exported="false" />
+        <activity android:name=".user.UserNotificationsActivity" android:exported="false" />
         <activity android:name=".user.UserSignUpActivity" android:exported="false" />
 
         <activity android:name=".worker.WorkerRegistrationActivity" android:exported="false" />

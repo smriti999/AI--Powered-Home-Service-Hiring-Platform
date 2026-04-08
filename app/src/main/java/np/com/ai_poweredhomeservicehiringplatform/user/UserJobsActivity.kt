@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,10 +57,8 @@ class UserJobsActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 val email = AppStorage.currentUserEmail(this) ?: ""
-                val jobs = AppStorage.loadUserJobs(this).filter { it.userEmail.equals(email, ignoreCase = true) }
                 UserJobsScreen(
                     userEmail = email,
-                    jobs = jobs,
                     onBackClick = { finish() }
                 )
             }
@@ -65,15 +66,29 @@ class UserJobsActivity : ComponentActivity() {
     }
 }
 
+private fun extractUserEmail(detail: String): String? {
+    val userLine = detail.lineSequence()
+        .firstOrNull { it.trim().startsWith("User:", ignoreCase = true) }
+        ?: return null
+    return userLine.substringAfter(":").trim().takeIf { it.isNotBlank() }
+}
+
+private fun extractTime(detail: String): String? {
+    val timeLine = detail.lineSequence()
+        .firstOrNull { it.trim().startsWith("Time:", ignoreCase = true) }
+        ?: return null
+    return timeLine.substringAfter(":").trim().takeIf { it.isNotBlank() }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UserJobsScreen(
     userEmail: String,
-    jobs: List<UserJobUiModel>,
     onBackClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var visibleJobs by remember { mutableStateOf(jobs) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
 
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
@@ -83,16 +98,36 @@ private fun UserJobsScreen(
         }
     }
 
+    fun statusLabel(status: WorkStatus): String {
+        return when (status) {
+            WorkStatus.Pending -> "Pending"
+            WorkStatus.Booked -> "Confirmed"
+            WorkStatus.Completed -> "Completed"
+        }
+    }
+
+    val myWorks = works.filter { w -> extractUserEmail(w.detail)?.equals(userEmail, ignoreCase = true) == true }
+    val visibleWorks = if (selectedTab == 0) {
+        myWorks.filter { it.status != WorkStatus.Completed }
+    } else {
+        myWorks.filter { it.status == WorkStatus.Completed }
+    }.sortedByDescending { it.id }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Works") },
+                title = { Text(text = "My Bookings") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
+                    TextButton(
+                        onClick = { works = AppStorage.loadWorks(context) }
+                    ) {
+                        Text(text = "Refresh", color = MaterialTheme.colorScheme.onPrimary)
+                    }
                     TextButton(onClick = onBackClick) {
                         Text(text = "Back", color = MaterialTheme.colorScheme.onPrimary)
                     }
@@ -107,24 +142,43 @@ private fun UserJobsScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = userEmail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val activeSelected = selectedTab == 0
+                val completedSelected = selectedTab == 1
 
-            Spacer(modifier = Modifier.padding(top = 12.dp))
+                if (activeSelected) {
+                    Button(onClick = { selectedTab = 0 }, modifier = Modifier.weight(1f)) { Text(text = "Active") }
+                } else {
+                    OutlinedButton(onClick = { selectedTab = 0 }, modifier = Modifier.weight(1f)) { Text(text = "Active") }
+                }
 
-            if (visibleJobs.isEmpty()) {
+                if (completedSelected) {
+                    Button(onClick = { selectedTab = 1 }, modifier = Modifier.weight(1f)) { Text(text = "Completed") }
+                } else {
+                    OutlinedButton(onClick = { selectedTab = 1 }, modifier = Modifier.weight(1f)) { Text(text = "Completed") }
+                }
+            }
+
+            if (visibleWorks.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "No jobs yet")
+                    Text(text = if (selectedTab == 0) "No active bookings" else "No completed bookings")
                 }
             } else {
-                visibleJobs.forEach { job ->
+                visibleWorks.forEach { work ->
+                    val timeText = extractTime(work.detail) ?: "-"
+                    val title = "${work.workName.substringBefore(" Services")} - $timeText"
+                    val provider = work.workerName ?: "Not assigned"
+                    val status = statusLabel(work.status)
+
                     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -133,13 +187,13 @@ private fun UserJobsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = job.service,
+                                    text = title,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = job.status.name,
-                                    color = statusColor(job.status),
+                                    text = status,
+                                    color = statusColor(work.status),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -148,41 +202,36 @@ private fun UserJobsScreen(
                             Spacer(modifier = Modifier.padding(top = 6.dp))
 
                             Text(
-                                text = job.description,
+                                text = "Provider: $provider  Status: $status",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            Spacer(modifier = Modifier.padding(top = 8.dp))
+                            if (selectedTab == 0) {
+                                Spacer(modifier = Modifier.padding(top = 10.dp))
 
-                            Text(text = "Location: ${job.location}", style = MaterialTheme.typography.bodySmall)
-                            Text(text = "Street/Home: ${job.streetHomeNumber}", style = MaterialTheme.typography.bodySmall)
-                            if (job.alternativeLocation.isNotBlank()) {
-                                Text(text = "Alt: ${job.alternativeLocation}", style = MaterialTheme.typography.bodySmall)
-                            }
+                                Button(
+                                    onClick = {
+                                        val updatedWorks = works.filterNot { it.id == work.id }
+                                        works = updatedWorks
+                                        AppStorage.saveWorks(context, updatedWorks)
 
-                            Spacer(modifier = Modifier.padding(top = 10.dp))
-
-                            Button(
-                                onClick = {
-                                    val updatedJobs = AppStorage.loadUserJobs(context).filterNot { it.id == job.id }
-                                    AppStorage.saveUserJobs(context, updatedJobs)
-                                    visibleJobs = updatedJobs.filter { it.userEmail.equals(userEmail, ignoreCase = true) }
-
-                                    val works = AppStorage.loadWorks(context)
-                                    val updatedWorks = works.filterNot { work ->
-                                        work.workName.equals(job.service, ignoreCase = true) &&
-                                            work.detail.contains("User: ${job.userEmail}", ignoreCase = true) &&
-                                            work.detail.contains(job.description, ignoreCase = true)
-                                    }
-                                    AppStorage.saveWorks(context, updatedWorks)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFD32F2F),
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(text = "Delete")
+                                        val innerDesc = work.detail.substringAfter("\n\n", work.detail)
+                                        val updatedJobs = AppStorage.loadUserJobs(context).filterNot { job: UserJobUiModel ->
+                                            job.userEmail.equals(userEmail, ignoreCase = true) &&
+                                                job.service.equals(work.workName, ignoreCase = true) &&
+                                                job.description.contains(innerDesc, ignoreCase = true)
+                                        }
+                                        AppStorage.saveUserJobs(context, updatedJobs)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFD32F2F),
+                                        contentColor = Color.White
+                                    ),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text(text = "Delete")
+                                }
                             }
                         }
                     }

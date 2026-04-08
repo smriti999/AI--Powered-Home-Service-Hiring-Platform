@@ -1,6 +1,7 @@
 package np.com.ai_poweredhomeservicehiringplatform.common.storage
 
 import android.content.Context
+import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
@@ -23,6 +24,7 @@ object AppStorage {
     private const val KEY_USER_JOBS_JSON = "user_jobs_json"
     private const val KEY_WORKER_APPLICATIONS_JSON = "worker_applications_json"
     private const val KEY_WORKERS_JSON = "workers_json"
+    private const val KEY_NOTIFICATIONS_JSON = "notifications_json"
 
     private const val KEY_ADMIN_LOGGED_IN = "admin_logged_in"
     private const val KEY_USER_LOGGED_IN = "user_logged_in"
@@ -204,6 +206,39 @@ object AppStorage {
             arr.put(obj)
         }
         prefs(context).edit().putString(KEY_USER_JOBS_JSON, arr.toString()).apply()
+    }
+
+    fun loadNotifications(context: Context): List<NotificationUiModel> {
+        val raw = prefs(context).getString(KEY_NOTIFICATIONS_JSON, "[]") ?: "[]"
+        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+        val result = ArrayList<NotificationUiModel>(arr.length())
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            result.add(
+                NotificationUiModel(
+                    id = obj.optInt("id", 0),
+                    userEmail = obj.optString("userEmail", ""),
+                    title = obj.optString("title", ""),
+                    message = obj.optString("message", ""),
+                    timestampMillis = obj.optLong("timestampMillis", 0L)
+                )
+            )
+        }
+        return result
+    }
+
+    fun saveNotifications(context: Context, notifications: List<NotificationUiModel>) {
+        val arr = JSONArray()
+        notifications.forEach { n ->
+            val obj = JSONObject()
+            obj.put("id", n.id)
+            obj.put("userEmail", n.userEmail)
+            obj.put("title", n.title)
+            obj.put("message", n.message)
+            obj.put("timestampMillis", n.timestampMillis)
+            arr.put(obj)
+        }
+        prefs(context).edit().putString(KEY_NOTIFICATIONS_JSON, arr.toString()).apply()
     }
 
     fun loadWorkerApplications(context: Context): List<WorkerApplicationUiModel> {
