@@ -1,6 +1,7 @@
 package np.com.ai_poweredhomeservicehiringplatform.user
 
 import android.content.Intent
+import android.app.TimePickerDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,12 +40,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
+import java.util.Calendar
 
 const val EXTRA_PRESET_SERVICE = "extra_preset_service"
 
@@ -126,6 +130,7 @@ private fun UserCreateJobScreen(
         location: String
     ) -> Unit
 ) {
+    val context = LocalContext.current
     val serviceOptions = listOf(
         "Cleaning Services",
         "Plumbing Services",
@@ -143,7 +148,7 @@ private fun UserCreateJobScreen(
     var isServiceMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var description by rememberSaveable { mutableStateOf("") }
     var time by rememberSaveable { mutableStateOf("") }
-    var isTimeMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var location by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -151,7 +156,7 @@ private fun UserCreateJobScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Worker neede") },
+                title = { Text(text = "Worker needed") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -245,41 +250,21 @@ private fun UserCreateJobScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = time,
-                        onValueChange = { },
-                        readOnly = true,
-                        placeholder = { Text(text = "Time") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isTimeMenuExpanded = true },
-                        trailingIcon = {
-                            TextButton(onClick = { isTimeMenuExpanded = true }) {
-                                Text(text = "▼")
-                            }
-                        }
-                    )
-
-                    DropdownMenu(
-                        expanded = isTimeMenuExpanded,
-                        onDismissRequest = { isTimeMenuExpanded = false },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        (0..23).forEach { hour ->
-                            val label = String.format("%02d:00", hour)
-                            DropdownMenuItem(
-                                text = { Text(text = label) },
-                                onClick = {
-                                    time = label
-                                    isTimeMenuExpanded = false
-                                    errorMessage = null
-                                }
-                            )
+                OutlinedTextField(
+                    value = time,
+                    onValueChange = { },
+                    readOnly = true,
+                    placeholder = { Text(text = "Time") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { showTimePicker = true },
+                    trailingIcon = {
+                        TextButton(onClick = { showTimePicker = true }) {
+                            Text(text = "▼")
                         }
                     }
-                }
+                )
 
                 OutlinedTextField(
                     value = location,
@@ -325,5 +310,27 @@ private fun UserCreateJobScreen(
                 Text(text = "Post Job")
             }
         }
+    }
+
+    LaunchedEffect(showTimePicker) {
+        if (!showTimePicker) return@LaunchedEffect
+        showTimePicker = false
+
+        val now = Calendar.getInstance()
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val amPm = if (hourOfDay < 12) "AM" else "PM"
+                val hour12 = run {
+                    val raw = hourOfDay % 12
+                    if (raw == 0) 12 else raw
+                }
+                time = String.format("%02d:%02d %s", hour12, minute, amPm)
+                errorMessage = null
+            },
+            now.get(Calendar.HOUR_OF_DAY),
+            now.get(Calendar.MINUTE),
+            false
+        ).show()
     }
 }
