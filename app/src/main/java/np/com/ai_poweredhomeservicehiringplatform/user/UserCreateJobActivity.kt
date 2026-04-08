@@ -150,7 +150,12 @@ private fun UserCreateJobScreen(
     var time by rememberSaveable { mutableStateOf("") }
     var showTimePicker by rememberSaveable { mutableStateOf(false) }
     var location by rememberSaveable { mutableStateOf("") }
+    var streetHomeNumber by rememberSaveable { mutableStateOf("") }
+    var alternativeLocation by rememberSaveable { mutableStateOf("") }
+    var isLocationMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val locationOptions = listOf("Kathmandu", "Bhaktapur", "Lalitpur")
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -266,16 +271,73 @@ private fun UserCreateJobScreen(
                     }
                 )
 
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = location,
+                        onValueChange = { },
+                        readOnly = true,
+                        placeholder = { Text(text = "Location") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isLocationMenuExpanded = true },
+                        trailingIcon = {
+                            TextButton(onClick = { isLocationMenuExpanded = true }) {
+                                Text(text = "▼")
+                            }
+                        }
+                    )
+
+                    DropdownMenu(
+                        expanded = isLocationMenuExpanded,
+                        onDismissRequest = { isLocationMenuExpanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        locationOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(text = option) },
+                                onClick = {
+                                    location = option
+                                    isLocationMenuExpanded = false
+                                    streetHomeNumber = ""
+                                    alternativeLocation = ""
+                                    errorMessage = null
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (location.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+
                 OutlinedTextField(
-                    value = location,
+                    value = streetHomeNumber,
                     onValueChange = {
-                        location = it
+                        streetHomeNumber = it
                         errorMessage = null
                     },
-                    placeholder = { Text(text = "Location") },
+                    placeholder = { Text(text = "Street, House Number") },
                     singleLine = true,
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = alternativeLocation,
+                    onValueChange = {
+                        alternativeLocation = it
+                        errorMessage = null
+                    },
+                    placeholder = { Text(text = "Optional Location") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
                 )
             }
 
@@ -292,14 +354,29 @@ private fun UserCreateJobScreen(
                     val d = description.trim()
                     val t = time.trim()
                     val loc = location.trim()
+                    val street = streetHomeNumber.trim()
+                    val alt = alternativeLocation.trim()
 
-                    if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank()) {
+                    if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank() || (loc.isNotBlank() && street.isBlank())) {
                         errorMessage = "All fields are required"
                         return@Button
                     }
 
                     errorMessage = null
-                    val fullDescription = "Time: $t\n\n$d"
+                    val fullDescription = buildString {
+                        append("Time: ")
+                        append(t)
+                        append("\nLocation: ")
+                        append(loc)
+                        append("\nStreet/Home: ")
+                        append(street)
+                        if (alt.isNotBlank()) {
+                            append("\nOptional: ")
+                            append(alt)
+                        }
+                        append("\n\n")
+                        append(d)
+                    }
                     onSubmit(s, fullDescription, t, loc)
                 },
                 modifier = Modifier
