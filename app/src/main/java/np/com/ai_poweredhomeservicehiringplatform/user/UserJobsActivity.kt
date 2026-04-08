@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
+import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
@@ -59,6 +60,12 @@ class UserJobsActivity : ComponentActivity() {
                 val email = AppStorage.currentUserEmail(this) ?: ""
                 UserJobsScreen(
                     userEmail = email,
+                    onPayClick = { workId, amount ->
+                        val intent = Intent(this, UserPaymentActivity::class.java)
+                        intent.putExtra(EXTRA_WORK_ID, workId)
+                        intent.putExtra(EXTRA_AMOUNT_NPR, amount)
+                        startActivity(intent)
+                    },
                     onBackClick = { finish() }
                 )
             }
@@ -84,11 +91,13 @@ private fun extractTime(detail: String): String? {
 @Composable
 private fun UserJobsScreen(
     userEmail: String,
+    onPayClick: (workId: Int, amountNpr: Int) -> Unit,
     onBackClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
+    var payments by remember { mutableStateOf(AppStorage.loadPayments(context)) }
 
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
@@ -124,7 +133,10 @@ private fun UserJobsScreen(
                 ),
                 actions = {
                     TextButton(
-                        onClick = { works = AppStorage.loadWorks(context) }
+                        onClick = {
+                            works = AppStorage.loadWorks(context)
+                            payments = AppStorage.loadPayments(context)
+                        }
                     ) {
                         Text(text = "Refresh", color = MaterialTheme.colorScheme.onPrimary)
                     }
@@ -178,6 +190,8 @@ private fun UserJobsScreen(
                     val title = "${work.workName.substringBefore(" Services")} - $timeText"
                     val provider = work.workerName ?: "Not assigned"
                     val status = statusLabel(work.status)
+                    val payment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
+                    val isPaid = payment?.status == PaymentStatus.Paid
 
                     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
@@ -231,6 +245,30 @@ private fun UserJobsScreen(
                                     modifier = Modifier.height(36.dp)
                                 ) {
                                     Text(text = "Delete")
+                                }
+                            }
+
+                            if (selectedTab == 1) {
+                                Spacer(modifier = Modifier.padding(top = 10.dp))
+
+                                if (isPaid) {
+                                    Text(
+                                        text = "Payment: Paid",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF2E7D32),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                } else {
+                                    Button(
+                                        onClick = { onPayClick(work.id, payment?.amountNpr ?: 0) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF1565C0),
+                                            contentColor = Color.White
+                                        ),
+                                        modifier = Modifier.height(36.dp)
+                                    ) {
+                                        Text(text = "Pay Now")
+                                    }
                                 }
                             }
                         }

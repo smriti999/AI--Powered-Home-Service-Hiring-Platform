@@ -12,6 +12,17 @@ enum class WorkerApplicationStatus {
     Rejected
 }
 
+enum class PaymentStatus {
+    Pending,
+    Paid
+}
+
+enum class PaymentMethod {
+    Esewa,
+    Khalti,
+    CashOnDelivery
+}
+
 data class UserUiModel(
     val id: Int,
     val name: String,
@@ -81,5 +92,15 @@ data class NotificationUiModel(
     val userEmail: String,
     val title: String,
     val message: String,
+    val timestampMillis: Long
+)
+
+data class PaymentUiModel(
+    val id: Int,
+    val workId: Int,
+    val userEmail: String,
+    val amountNpr: Int,
+    val method: PaymentMethod?,
+    val status: PaymentStatus,
     val timestampMillis: Long
 )

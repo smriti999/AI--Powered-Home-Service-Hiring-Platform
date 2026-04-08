@@ -39,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiModel
+import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
+import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
@@ -364,6 +366,22 @@ private fun WorkerDashboardScreen(
 
                                             val userEmail = extractUserEmail(work.detail)
                                             if (userEmail != null) {
+                                                val payments = AppStorage.loadPayments(context)
+                                                val existingPayment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
+                                                if (existingPayment == null) {
+                                                    val nextPaymentId = (payments.maxOfOrNull { it.id } ?: 0) + 1
+                                                    val updatedPayments = payments + PaymentUiModel(
+                                                        id = nextPaymentId,
+                                                        workId = work.id,
+                                                        userEmail = userEmail,
+                                                        amountNpr = 0,
+                                                        method = null,
+                                                        status = PaymentStatus.Pending,
+                                                        timestampMillis = System.currentTimeMillis()
+                                                    )
+                                                    AppStorage.savePayments(context, updatedPayments)
+                                                }
+
                                                 val notifications = AppStorage.loadNotifications(context)
                                                 val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
                                                 val updatedNotifications = notifications + NotificationUiModel(
