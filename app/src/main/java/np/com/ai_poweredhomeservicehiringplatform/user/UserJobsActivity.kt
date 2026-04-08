@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,6 +72,9 @@ private fun UserJobsScreen(
     jobs: List<UserJobUiModel>,
     onBackClick: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var visibleJobs by remember { mutableStateOf(jobs) }
+
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
             WorkStatus.Pending -> Color(0xFFF9A825)
@@ -78,7 +87,7 @@ private fun UserJobsScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "My Jobs") },
+                title = { Text(text = "Works") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -106,7 +115,7 @@ private fun UserJobsScreen(
 
             Spacer(modifier = Modifier.padding(top = 12.dp))
 
-            if (jobs.isEmpty()) {
+            if (visibleJobs.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -115,7 +124,7 @@ private fun UserJobsScreen(
                     Text(text = "No jobs yet")
                 }
             } else {
-                jobs.forEach { job ->
+                visibleJobs.forEach { job ->
                     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -151,6 +160,30 @@ private fun UserJobsScreen(
                             if (job.alternativeLocation.isNotBlank()) {
                                 Text(text = "Alt: ${job.alternativeLocation}", style = MaterialTheme.typography.bodySmall)
                             }
+
+                            Spacer(modifier = Modifier.padding(top = 10.dp))
+
+                            Button(
+                                onClick = {
+                                    val updatedJobs = AppStorage.loadUserJobs(context).filterNot { it.id == job.id }
+                                    AppStorage.saveUserJobs(context, updatedJobs)
+                                    visibleJobs = updatedJobs.filter { it.userEmail.equals(userEmail, ignoreCase = true) }
+
+                                    val works = AppStorage.loadWorks(context)
+                                    val updatedWorks = works.filterNot { work ->
+                                        work.workName.equals(job.service, ignoreCase = true) &&
+                                            work.detail.contains("User: ${job.userEmail}", ignoreCase = true) &&
+                                            work.detail.contains(job.description, ignoreCase = true)
+                                    }
+                                    AppStorage.saveWorks(context, updatedWorks)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFD32F2F),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(text = "Delete")
+                            }
                         }
                     }
 
@@ -160,4 +193,3 @@ private fun UserJobsScreen(
         }
     }
 }
-
