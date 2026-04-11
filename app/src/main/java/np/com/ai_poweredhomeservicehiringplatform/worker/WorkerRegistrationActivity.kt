@@ -156,7 +156,7 @@ private fun WorkerRegistrationScreen(
 
     val minBytes = 2L * 1024L * 1024L
     val maxBytes = 5L * 1024L * 1024L
-    val isCvValid = cvUriString != null && cvSizeBytes != null && cvSizeBytes in minBytes..maxBytes
+    val isCvValid = cvUriString == null || (cvSizeBytes != null && cvSizeBytes in minBytes..maxBytes)
     val isFormFilled =
         fullName.trim().isNotBlank() &&
             email.trim().isNotBlank() &&
@@ -471,12 +471,9 @@ private fun WorkerRegistrationScreen(
                         gender.isBlank() ||
                         profession.isBlank() ||
                         trimmedExperience.isBlank() ||
-                        password.isBlank() ||
-                        cvUri == null ||
-                        cvName.isNullOrBlank() ||
-                        cvSize == null
+                        password.isBlank()
                     ) {
-                        errorMessage = "All fields are required (CV PDF 2MB–5MB required)"
+                        errorMessage = "All fields are required"
                         return@Button
                     }
 
@@ -490,7 +487,7 @@ private fun WorkerRegistrationScreen(
                         return@Button
                     }
 
-                    if (cvSize !in minBytes..maxBytes) {
+                    if (cvUri != null && (cvSize == null || cvSize !in minBytes..maxBytes)) {
                         errorMessage = "CV must be a PDF between 2MB and 5MB"
                         return@Button
                     }
@@ -509,7 +506,7 @@ private fun WorkerRegistrationScreen(
                         profession = profession,
                         experienceYears = trimmedExperience,
                         passwordHash = sha256Hex(password),
-                        cvUri = cvUri.toString(),
+                        cvUri = cvUri?.toString(),
                         cvFileName = cvName,
                         cvSizeBytes = cvSize,
                         status = WorkerApplicationStatus.Pending

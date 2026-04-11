@@ -350,9 +350,9 @@ object AppStorage {
                     profession = obj.optString("profession", ""),
                     experienceYears = obj.optString("experienceYears", ""),
                     passwordHash = obj.optString("passwordHash", ""),
-                    cvUri = obj.optString("cvUri", ""),
-                    cvFileName = obj.optString("cvFileName", ""),
-                    cvSizeBytes = obj.optLong("cvSizeBytes", 0L),
+                    cvUri = if (obj.has("cvUri") && !obj.isNull("cvUri")) obj.optString("cvUri") else null,
+                    cvFileName = if (obj.has("cvFileName") && !obj.isNull("cvFileName")) obj.optString("cvFileName") else null,
+                    cvSizeBytes = if (obj.has("cvSizeBytes") && !obj.isNull("cvSizeBytes")) obj.optLong("cvSizeBytes") else null,
                     status = status
                 )
             )

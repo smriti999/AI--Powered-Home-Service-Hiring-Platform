@@ -18,9 +18,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -58,6 +62,7 @@ class UserProfileActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 UserProfileScreen(
+                    onBack = { finish() },
                     onLogout = {
                         AppStorage.setUserLoggedIn(this, false, null)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -71,7 +76,7 @@ class UserProfileActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UserProfileScreen(onLogout: () -> Unit) {
+private fun UserProfileScreen(onBack: () -> Unit, onLogout: () -> Unit) {
     val context = LocalContext.current
     val email = AppStorage.currentUserEmail(context).orEmpty()
     val users = AppStorage.loadUsers(context)
@@ -94,6 +99,15 @@ private fun UserProfileScreen(onLogout: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,

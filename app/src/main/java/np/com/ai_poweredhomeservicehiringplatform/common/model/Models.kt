@@ -62,9 +62,9 @@ data class WorkerApplicationUiModel(
     val profession: String,
     val experienceYears: String,
     val passwordHash: String,
-    val cvUri: String,
-    val cvFileName: String,
-    val cvSizeBytes: Long,
+    val cvUri: String?,
+    val cvFileName: String?,
+    val cvSizeBytes: Long?,
     val status: WorkerApplicationStatus
 )
 
