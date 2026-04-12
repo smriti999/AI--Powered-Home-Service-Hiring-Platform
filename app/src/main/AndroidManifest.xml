@@ -31,6 +31,7 @@
         <activity android:name=".admin.AdminWorkerManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminUserManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkManagementActivity" android:exported="false" />
+        <activity android:name=".admin.AdminRevenueActivity" android:exported="false" />
 
         <activity android:name=".user.UserHomeActivity" android:exported="false" />
         <activity android:name=".user.UserCategoriesActivity" android:exported="false" />

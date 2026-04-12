@@ -48,6 +48,7 @@ class AdminDashboardActivity : ComponentActivity() {
                     onWorkersClick = { startActivity(Intent(this, AdminWorkerManagementActivity::class.java)) },
                     onUsersClick = { startActivity(Intent(this, AdminUserManagementActivity::class.java)) },
                     onWorksClick = { startActivity(Intent(this, AdminWorkManagementActivity::class.java)) },
+                    onRevenueClick = { startActivity(Intent(this, AdminRevenueActivity::class.java)) },
                     onLogoutClick = {
                         AppStorage.setAdminLoggedIn(this, false)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -66,17 +67,19 @@ private fun AdminDashboardScreen(
     onWorkersClick: () -> Unit,
     onUsersClick: () -> Unit,
     onWorksClick: () -> Unit,
+    onRevenueClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val users = AppStorage.loadUsers(context)
     val workers = AppStorage.loadWorkers(context)
     val works = AppStorage.loadWorks(context)
+    val payments = AppStorage.loadPayments(context)
 
     val totalUsers = users.size
     val activeWorkers = workers.count { it.status.equals("Active", ignoreCase = true) }
     val pendingJobs = works.count { it.status == np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus.Pending }
-    val revenue = 0
+    val revenue = payments.filter { it.status == np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus.Paid }.sumOf { it.amountNpr }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -152,13 +155,13 @@ private fun AdminDashboardScreen(
                 }
                 OutlinedCard(
                     modifier = Modifier.weight(1f),
-                    onClick = { /* Could navigate to a revenue/payment page if one existed */ }
+                    onClick = onRevenueClick
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "Revenue", fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "$$revenue",
+                            text = "Rs. $revenue",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
