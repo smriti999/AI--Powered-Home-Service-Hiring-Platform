@@ -66,6 +66,13 @@ class UserJobsActivity : ComponentActivity() {
                         intent.putExtra(EXTRA_AMOUNT_NPR, amount)
                         startActivity(intent)
                     },
+                    onRateClick = { workId, workerName, profession ->
+                        val intent = Intent(this, UserRateServiceActivity::class.java)
+                        intent.putExtra(EXTRA_RATE_WORK_ID, workId)
+                        intent.putExtra(EXTRA_RATE_WORKER_NAME, workerName)
+                        intent.putExtra(EXTRA_RATE_PROFESSION, profession)
+                        startActivity(intent)
+                    },
                     onBackClick = { finish() }
                 )
             }
@@ -92,12 +99,14 @@ private fun extractTime(detail: String): String? {
 private fun UserJobsScreen(
     userEmail: String,
     onPayClick: (workId: Int, amountNpr: Int) -> Unit,
+    onRateClick: (workId: Int, workerName: String, profession: String) -> Unit,
     onBackClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
     var payments by remember { mutableStateOf(AppStorage.loadPayments(context)) }
+    var ratings by remember { mutableStateOf(AppStorage.loadRatings(context)) }
 
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
@@ -136,6 +145,7 @@ private fun UserJobsScreen(
                         onClick = {
                             works = AppStorage.loadWorks(context)
                             payments = AppStorage.loadPayments(context)
+                            ratings = AppStorage.loadRatings(context)
                         }
                     ) {
                         Text(text = "Refresh", color = MaterialTheme.colorScheme.onPrimary)
@@ -251,23 +261,44 @@ private fun UserJobsScreen(
                             if (selectedTab == 1) {
                                 Spacer(modifier = Modifier.padding(top = 10.dp))
 
-                                if (isPaid) {
-                                    Text(
-                                        text = "Payment: Paid",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF2E7D32),
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                } else {
-                                    Button(
-                                        onClick = { onPayClick(work.id, payment?.amountNpr ?: 0) },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF1565C0),
-                                            contentColor = Color.White
-                                        ),
-                                        modifier = Modifier.height(36.dp)
-                                    ) {
-                                        Text(text = "Pay Now")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    if (isPaid) {
+                                        Text(
+                                            text = "Payment: Paid",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF2E7D32),
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    } else {
+                                        Button(
+                                            onClick = { onPayClick(work.id, payment?.amountNpr ?: 0) },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF1565C0),
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier
+                                                .height(36.dp)
+                                                .weight(1f)
+                                        ) {
+                                            Text(text = "Pay Now", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+
+                                    val rating = ratings.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
+                                     OutlinedButton(
+                                         onClick = { onRateClick(work.id, work.workerName ?: "", work.workName.substringBefore(" Services")) },
+                                         modifier = Modifier
+                                             .height(36.dp)
+                                             .weight(1f)
+                                     ) {
+                                        Text(
+                                            text = if (rating != null) "Rated ${rating.stars}★" else "Rate Service",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
                                     }
                                 }
                             }

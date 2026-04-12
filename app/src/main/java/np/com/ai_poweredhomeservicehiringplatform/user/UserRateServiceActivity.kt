@@ -21,8 +21,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -116,6 +121,15 @@ private fun RateServiceScreen(
                         color = Color.White
                     ) 
                 },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
@@ -165,14 +179,16 @@ private fun RateServiceScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 (1..5).forEach { index ->
                     val isSelected = index <= stars
-                    Box(
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "Star $index",
                         modifier = Modifier
                             .size(36.dp)
-                            .background(if (isSelected) Color(0xFFFFC107) else Color(0xFFEEEEEE), CircleShape)
                             .clickable {
                                 stars = index
                                 errorMessage = null
-                            }
+                            },
+                        tint = if (isSelected) Color(0xFFFFC107) else Color(0xFFEEEEEE)
                     )
                 }
             }
