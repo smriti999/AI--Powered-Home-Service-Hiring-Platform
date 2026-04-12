@@ -100,7 +100,10 @@ private fun AdminDashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedCard(modifier = Modifier.weight(1f)) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onUsersClick
+                ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "Total Users", fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
@@ -111,7 +114,10 @@ private fun AdminDashboardScreen(
                         )
                     }
                 }
-                OutlinedCard(modifier = Modifier.weight(1f)) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onWorkersClick
+                ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "Active Workers", fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
@@ -130,7 +136,10 @@ private fun AdminDashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedCard(modifier = Modifier.weight(1f)) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onWorksClick
+                ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "Pending Jobs", fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
@@ -141,7 +150,10 @@ private fun AdminDashboardScreen(
                         )
                     }
                 }
-                OutlinedCard(modifier = Modifier.weight(1f)) {
+                OutlinedCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* Could navigate to a revenue/payment page if one existed */ }
+                ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = "Revenue", fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
