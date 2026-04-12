@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -78,6 +79,7 @@ private fun AdminWorkerManagementScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var workers by remember { mutableStateOf(AppStorage.loadWorkers(context)) }
+    var selectedWorker by remember { mutableStateOf<WorkerUiModel?>(null) }
 
     val filteredWorkers = workers.filter { worker ->
         val query = searchQuery.trim()
@@ -148,7 +150,10 @@ private fun AdminWorkerManagementScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     filteredWorkers.forEach { worker: WorkerUiModel ->
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { selectedWorker = worker }
+                        ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -192,6 +197,54 @@ private fun AdminWorkerManagementScreen(
                 }
             }
         }
+    }
+
+    if (selectedWorker != null) {
+        val w = selectedWorker!!
+        AlertDialog(
+            onDismissRequest = { selectedWorker = null },
+            title = { Text(text = "Worker Details") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DetailItem(label = "Full Name", value = w.name)
+                    DetailItem(label = "Profession", value = w.profession)
+                    DetailItem(label = "Experience", value = "${w.experienceYears} Years")
+                    DetailItem(label = "Email", value = w.email)
+                    DetailItem(label = "Phone", value = w.phoneNumber)
+                    DetailItem(label = "Gender", value = w.gender)
+                    DetailItem(label = "Location", value = w.location)
+                    DetailItem(label = "Street/Home", value = w.streetHomeNumber)
+                    if (w.alternativeLocation.isNotBlank()) {
+                        DetailItem(label = "Alt Location", value = w.alternativeLocation)
+                    }
+                    DetailItem(label = "Status", value = w.status)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedWorker = null }) {
+                    Text(text = "Close")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DetailItem(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "$label: ",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.widthIn(min = 100.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
