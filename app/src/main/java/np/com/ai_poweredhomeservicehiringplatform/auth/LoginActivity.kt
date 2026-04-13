@@ -118,7 +118,12 @@ private fun LoginScreen(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                actions = {
+                    TextButton(onClick = onSignUpClick) {
+                        Text(text = "Sign Up", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -227,20 +232,6 @@ private fun LoginScreen(
                     .height(44.dp)
             ) {
                 Text(text = "LOGIN")
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = "Or sign up with Google",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            TextButton(onClick = onSignUpClick) {
-                Text(text = "Sign Up")
             }
         }
     }
