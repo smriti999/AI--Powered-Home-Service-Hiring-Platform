@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,8 +37,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.R
 import np.com.ai_poweredhomeservicehiringplatform.admin.AdminDashboardActivity
@@ -116,13 +120,12 @@ private fun LoginScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            LogoTopAppBar(
-                title = "Login",
-                actions = {
-                    TextButton(onClick = onSignUpClick) {
-                        Text(text = "Sign Up", color = Color.White)
-                    }
-                }
+            CenterAlignedTopAppBar(
+                title = { Text(text = "Login") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White
+                )
             )
         }
     ) { innerPadding ->
@@ -240,6 +243,22 @@ private fun LoginScreen(
                     .height(44.dp)
             ) {
                 Text(text = "LOGIN")
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Don't have an account? ")
+                Text(
+                    text = "Sign Up",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onSignUpClick() }
+                )
             }
         }
     }
