@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.UserUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class AdminUserManagementActivity : ComponentActivity() {
@@ -90,18 +91,14 @@ private fun AdminUserManagementScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = "User Management") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            LogoTopAppBar(
+                title = "User Management",
                 actions = {
                     Row {
-                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onRequestsClick) { Text(text = "Requests", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onWorksClick) { Text(text = "Works", color = MaterialTheme.colorScheme.onPrimary) }
+                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = Color.White) }
+                        TextButton(onClick = onRequestsClick) { Text(text = "Requests", color = Color.White) }
+                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = Color.White) }
+                        TextButton(onClick = onWorksClick) { Text(text = "Works", color = Color.White) }
                     }
                 }
             )

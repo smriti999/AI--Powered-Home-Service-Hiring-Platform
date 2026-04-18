@@ -30,10 +30,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class UserHomeActivity : ComponentActivity() {
@@ -96,18 +98,14 @@ private fun UserHomeScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = "Home") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            LogoTopAppBar(
+                title = "Home",
                 actions = {
                     TextButton(onClick = onProfileClick) {
-                        Text(text = "Profile", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(text = "Profile", color = Color.White)
                     }
                     TextButton(onClick = onNotificationsClick) {
-                        Text(text = "Notifications", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(text = "Notifications", color = Color.White)
                     }
                 }
             )

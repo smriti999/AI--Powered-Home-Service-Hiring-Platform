@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -44,6 +45,7 @@ import np.com.ai_poweredhomeservicehiringplatform.admin.AdminLoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.normalizeGmailEmail
 import np.com.ai_poweredhomeservicehiringplatform.common.sha256Hex
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import np.com.ai_poweredhomeservicehiringplatform.user.UserHomeActivity
 import np.com.ai_poweredhomeservicehiringplatform.worker.WorkerDashboardActivity
@@ -113,15 +115,11 @@ private fun LoginScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = "") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            LogoTopAppBar(
+                title = "Login",
                 actions = {
                     TextButton(onClick = onSignUpClick) {
-                        Text(text = "Sign Up", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(text = "Sign Up", color = Color.White)
                     }
                 }
             )

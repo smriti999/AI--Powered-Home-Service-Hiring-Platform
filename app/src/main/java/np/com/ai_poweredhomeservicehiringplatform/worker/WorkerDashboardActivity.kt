@@ -44,6 +44,7 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class WorkerDashboardActivity : ComponentActivity() {
@@ -142,15 +143,11 @@ private fun WorkerDashboardScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = "Worker Dashboard") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            LogoTopAppBar(
+                title = "Worker Dashboard",
                 actions = {
                     TextButton(onClick = onLogout) {
-                        Text(text = "Logout", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(text = "Logout", color = Color.White)
                     }
                 }
             )

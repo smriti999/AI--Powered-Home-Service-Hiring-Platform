@@ -39,6 +39,7 @@ import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerApplicationStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class AdminRequestsActivity : ComponentActivity() {
@@ -123,18 +124,14 @@ private fun AdminRequestsScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(text = "Request Worker") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+            LogoTopAppBar(
+                title = "Worker Requests",
                 actions = {
                     Row {
-                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onUsersClick) { Text(text = "Users", color = MaterialTheme.colorScheme.onPrimary) }
-                        TextButton(onClick = onWorksClick) { Text(text = "Works", color = MaterialTheme.colorScheme.onPrimary) }
+                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = Color.White) }
+                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = Color.White) }
+                        TextButton(onClick = onUsersClick) { Text(text = "Users", color = Color.White) }
+                        TextButton(onClick = onWorksClick) { Text(text = "Works", color = Color.White) }
                     }
                 }
             )
