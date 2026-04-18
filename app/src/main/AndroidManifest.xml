@@ -25,7 +25,6 @@
 
         <activity android:name=".auth.SignUpActivity" android:exported="false" />
 
-        <activity android:name=".admin.AdminLoginActivity" android:exported="false" />
         <activity android:name=".admin.AdminDashboardActivity" android:exported="false" />
         <activity android:name=".admin.AdminRequestsActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkerManagementActivity" android:exported="false" />

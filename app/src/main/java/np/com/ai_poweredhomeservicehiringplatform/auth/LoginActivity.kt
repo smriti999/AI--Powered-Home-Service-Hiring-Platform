@@ -41,7 +41,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.R
 import np.com.ai_poweredhomeservicehiringplatform.admin.AdminDashboardActivity
-import np.com.ai_poweredhomeservicehiringplatform.admin.AdminLoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.normalizeGmailEmail
 import np.com.ai_poweredhomeservicehiringplatform.common.sha256Hex
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
@@ -77,8 +76,10 @@ class LoginActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 LoginScreen(
-                    onAdminLogoClick = {
-                        startActivity(Intent(this, AdminLoginActivity::class.java))
+                    onAdminLoginSuccess = {
+                        AppStorage.setAdminLoggedIn(this, true)
+                        startActivity(Intent(this, AdminDashboardActivity::class.java))
+                        finish()
                     },
                     onUserLoginSuccess = { email ->
                         AppStorage.setUserLoggedIn(this, true, email)
@@ -102,7 +103,7 @@ class LoginActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoginScreen(
-    onAdminLogoClick: () -> Unit,
+    onAdminLoginSuccess: () -> Unit,
     onUserLoginSuccess: (email: String) -> Unit,
     onWorkerLoginSuccess: (email: String) -> Unit,
     onSignUpClick: () -> Unit
@@ -149,7 +150,6 @@ private fun LoginScreen(
                 contentDescription = null,
                 modifier = Modifier
                     .size(120.dp)
-                    .clickable(onClick = onAdminLogoClick)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -157,10 +157,10 @@ private fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = {
-                    email = normalizeGmailEmail(it)
+                    email = it
                     errorMessage = null
                 },
-                placeholder = { Text(text = "Email") },
+                placeholder = { Text(text = "Email / Username") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -194,31 +194,41 @@ private fun LoginScreen(
                 onClick = {
                     val trimmedEmail = email.trim()
                     if (trimmedEmail.isBlank() || password.isBlank()) {
-                        errorMessage = "Email and password required"
+                        errorMessage = "Email/Username and password required"
                         return@Button
                     }
 
+                    // 1. Check Admin Login
+                    if (AppStorage.isAdminCredentialValid(context, trimmedEmail, password)) {
+                        errorMessage = null
+                        onAdminLoginSuccess()
+                        return@Button
+                    }
+
+                    // 2. Check User Login
                     val users = AppStorage.loadUsers(context)
+                    val normalizedEmail = normalizeGmailEmail(trimmedEmail)
                     val isUserOk = users.any {
-                        it.email.equals(trimmedEmail, ignoreCase = true) && it.passwordHash == sha256Hex(password)
+                        it.email.equals(normalizedEmail, ignoreCase = true) && it.passwordHash == sha256Hex(password)
                     }
 
                     if (isUserOk) {
                         errorMessage = null
-                        onUserLoginSuccess(trimmedEmail)
+                        onUserLoginSuccess(normalizedEmail)
                         return@Button
                     }
 
+                    // 3. Check Worker Login
                     val workers = AppStorage.loadWorkers(context)
                     val isWorkerOk = workers.any {
-                        it.email.equals(trimmedEmail, ignoreCase = true) &&
+                        it.email.equals(normalizedEmail, ignoreCase = true) &&
                             it.passwordHash == sha256Hex(password) &&
                             it.status.equals("Active", ignoreCase = true)
                     }
 
                     if (isWorkerOk) {
                         errorMessage = null
-                        onWorkerLoginSuccess(trimmedEmail)
+                        onWorkerLoginSuccess(normalizedEmail)
                         return@Button
                     }
 
