@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -71,6 +73,8 @@ class WorkerDashboardActivity : ComponentActivity() {
             AIPoweredHomeServiceHiringPlatformTheme {
                 WorkerDashboardScreen(
                     onProfileClick = { startActivity(Intent(this, WorkerProfileActivity::class.java)) },
+                    onEarningsClick = { startActivity(Intent(this, WorkerEarningsActivity::class.java)) },
+                    onNotificationsClick = { startActivity(Intent(this, WorkerNotificationsActivity::class.java)) },
                     onLogout = {
                         AppStorage.setWorkerLoggedIn(this, false, null)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -114,6 +118,8 @@ private fun extractUserEmail(detail: String): String? {
 @Composable
 private fun WorkerDashboardScreen(
     onProfileClick: () -> Unit,
+    onEarningsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -147,6 +153,8 @@ private fun WorkerDashboardScreen(
     val navItems = listOf(
         NavigationItem("Dashboard", Icons.Default.Dashboard, { }),
         NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
+        NavigationItem("Earnings", Icons.Default.Payments, onEarningsClick),
+        NavigationItem("Notifications", Icons.Default.Notifications, onNotificationsClick),
         NavigationItem("Logout", Icons.Default.ExitToApp, onLogout)
     )
 

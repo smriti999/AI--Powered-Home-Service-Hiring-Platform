@@ -43,6 +43,8 @@
         <activity android:name=".worker.WorkerDashboardActivity" android:exported="false" />
         <activity android:name=".worker.WorkerRegistrationActivity" android:exported="false" />
         <activity android:name=".worker.WorkerProfileActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerEarningsActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerNotificationsActivity" android:exported="false" />
 
     </application>
 
