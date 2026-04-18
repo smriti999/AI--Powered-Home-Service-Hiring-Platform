@@ -16,15 +16,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,7 +40,10 @@ import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -54,7 +62,7 @@ class AdminRevenueActivity : ComponentActivity() {
 
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
-                AdminRevenueScreen(onBack = { finish() })
+                AdminRevenueScreen()
             }
         }
     }
@@ -62,91 +70,112 @@ class AdminRevenueActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AdminRevenueScreen(onBack: () -> Unit) {
+private fun AdminRevenueScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val payments = remember { AppStorage.loadPayments(context) }
     val paidPayments = payments.filter { it.status == PaymentStatus.Paid }
     val totalRevenue = paidPayments.sumOf { it.amountNpr }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LogoTopAppBar(
-                title = "Revenue Management",
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val navItems = listOf(
+        NavigationItem("Dashboard", Icons.Default.Dashboard, {
+            context.startActivity(Intent(context, AdminDashboardActivity::class.java))
+        }),
+        NavigationItem("Requests", Icons.Default.PendingActions, {
+            context.startActivity(Intent(context, AdminRequestsActivity::class.java))
+        }),
+        NavigationItem("Workers", Icons.Default.Group, {
+            context.startActivity(Intent(context, AdminWorkerManagementActivity::class.java))
+        }),
+        NavigationItem("Users", Icons.Default.Group, {
+            context.startActivity(Intent(context, AdminUserManagementActivity::class.java))
+        }),
+        NavigationItem("Works", Icons.Default.List, {
+            context.startActivity(Intent(context, AdminWorkManagementActivity::class.java))
+        }),
+        NavigationItem("Revenue", Icons.Default.MonetizationOn, { }),
+        NavigationItem("Logout", Icons.Default.ExitToApp, {
+            AppStorage.setAdminLoggedIn(context, false)
+            context.startActivity(Intent(context, LoginActivity::class.java))
+            (context as? ComponentActivity)?.finish()
+        })
+    )
+
+    AppDrawer(drawerState = drawerState, items = navItems) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                LogoTopAppBar(
+                    title = "Revenue Management",
+                    navigationIcon = {
+                        BurgerMenuIcon(drawerState = drawerState)
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Total Revenue Collected",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Rs. $totalRevenue",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Total Transactions: ${paidPayments.size}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
                     }
                 }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Total Revenue Collected",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Rs. $totalRevenue",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Total Transactions: ${paidPayments.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Recent Transactions",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (paidPayments.isEmpty()) {
                 Text(
-                    text = "No revenue recorded yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 20.dp)
+                    text = "Recent Transactions",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
-            } else {
-                paidPayments.sortedByDescending { it.timestampMillis }.forEach { payment ->
-                    TransactionItem(
-                        userEmail = payment.userEmail,
-                        amount = payment.amountNpr,
-                        method = payment.method?.name ?: "Unknown",
-                        timestamp = payment.timestampMillis
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (paidPayments.isEmpty()) {
+                    Text(
+                        text = "No revenue recorded yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 20.dp)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                } else {
+                    paidPayments.sortedByDescending { it.timestampMillis }.forEach { payment ->
+                        TransactionItem(
+                            userEmail = payment.userEmail,
+                            amount = payment.amountNpr,
+                            method = payment.method?.name ?: "Unknown",
+                            timestamp = payment.timestampMillis
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                 }
             }
         }

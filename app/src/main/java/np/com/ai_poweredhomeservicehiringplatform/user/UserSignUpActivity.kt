@@ -99,6 +99,88 @@ private fun UserSignUpScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 18.dp)
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Button(
+                    onClick = {
+                        val trimmedName = fullName.trim()
+                        val trimmedEmail = email.trim()
+                        val trimmedPhone = phoneNumber.trim()
+                        val trimmedStreet = streetHomeNumber.trim()
+                        val trimmedAlt = alternativeLocation.trim()
+
+                        if (trimmedName.isBlank() ||
+                            trimmedEmail.isBlank() ||
+                            trimmedPhone.isBlank() ||
+                            location.isBlank() ||
+                            trimmedStreet.isBlank() ||
+                            password.isBlank() ||
+                            confirmPassword.isBlank()
+                        ) {
+                            errorMessage = "All fields are required"
+                            return@Button
+                        }
+
+                        if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
+                            errorMessage = "Email must end with @gmail.com"
+                            return@Button
+                        }
+
+                        if (trimmedPhone.length != 10) {
+                            errorMessage = "Phone number must be 10 digits"
+                            return@Button
+                        }
+
+                        if (password != confirmPassword) {
+                            errorMessage = "Password does not match"
+                            return@Button
+                        }
+
+                        val users = AppStorage.loadUsers(context)
+                        if (users.any { it.email.equals(trimmedEmail, ignoreCase = true) }) {
+                            errorMessage = "Email already registered"
+                            return@Button
+                        }
+
+                        val nextId = (users.maxOfOrNull { it.id } ?: 0) + 1
+                        val updatedUsers = users + UserUiModel(
+                            id = nextId,
+                            name = trimmedName,
+                            status = "Active",
+                            email = trimmedEmail,
+                            phoneNumber = trimmedPhone,
+                            location = location,
+                            streetHomeNumber = trimmedStreet,
+                            alternativeLocation = trimmedAlt,
+                            passwordHash = sha256Hex(password)
+                        )
+                        AppStorage.saveUsers(context, updatedUsers)
+
+                        errorMessage = null
+                        showThankYouDialog = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                        .height(46.dp)
+                ) {
+                    Text(text = "SIGN UP")
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -256,79 +338,6 @@ private fun UserSignUpScreen(
                     .fillMaxWidth()
                     .widthIn(max = 360.dp)
             )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            if (errorMessage != null) {
-                Text(text = errorMessage ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            Button(
-                onClick = {
-                    val trimmedName = fullName.trim()
-                    val trimmedEmail = email.trim()
-                    val trimmedPhone = phoneNumber.trim()
-                    val trimmedStreet = streetHomeNumber.trim()
-                    val trimmedAlt = alternativeLocation.trim()
-
-                    if (trimmedName.isBlank() ||
-                        trimmedEmail.isBlank() ||
-                        trimmedPhone.isBlank() ||
-                        location.isBlank() ||
-                        trimmedStreet.isBlank() ||
-                        password.isBlank() ||
-                        confirmPassword.isBlank()
-                    ) {
-                        errorMessage = "All fields are required"
-                        return@Button
-                    }
-
-                    if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
-                        errorMessage = "Email must end with @gmail.com"
-                        return@Button
-                    }
-
-                    if (trimmedPhone.length != 10) {
-                        errorMessage = "Phone number must be 10 digits"
-                        return@Button
-                    }
-
-                    if (password != confirmPassword) {
-                        errorMessage = "Password does not match"
-                        return@Button
-                    }
-
-                    val users = AppStorage.loadUsers(context)
-                    if (users.any { it.email.equals(trimmedEmail, ignoreCase = true) }) {
-                        errorMessage = "Email already registered"
-                        return@Button
-                    }
-
-                    val nextId = (users.maxOfOrNull { it.id } ?: 0) + 1
-                    val updatedUsers = users + UserUiModel(
-                        id = nextId,
-                        name = trimmedName,
-                        status = "Active",
-                        email = trimmedEmail,
-                        phoneNumber = trimmedPhone,
-                        location = location,
-                        streetHomeNumber = trimmedStreet,
-                        alternativeLocation = trimmedAlt,
-                        passwordHash = sha256Hex(password)
-                    )
-                    AppStorage.saveUsers(context, updatedUsers)
-
-                    errorMessage = null
-                    showThankYouDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 360.dp)
-                    .height(46.dp)
-            ) {
-                Text(text = "SIGN UP")
-            }
         }
     }
 

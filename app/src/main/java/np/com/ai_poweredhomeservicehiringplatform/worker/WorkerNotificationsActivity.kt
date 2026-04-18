@@ -176,35 +176,50 @@ private fun NotificationCard(title: String, message: String, timestamp: Long) {
 
 @Composable
 private fun WorkHistoryCard(workName: String, status: WorkStatus, id: Int) {
+    val description = when (status) {
+        WorkStatus.Pending -> "This job is currently available for you to accept."
+        WorkStatus.Booked -> "You have booked and accepted this job."
+        WorkStatus.Completed -> "You have successfully completed this work."
+    }
+
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = workName,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall
                 )
                 Text(
-                    text = "Job ID: #$id",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    text = status.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = when (status) {
+                        WorkStatus.Completed -> Color(0xFF2E7D32)
+                        WorkStatus.Booked -> Color(0xFF1565C0)
+                        WorkStatus.Pending -> Color(0xFFF9A825)
+                    }
                 )
             }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
             Text(
-                text = status.name,
+                text = description,
                 style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = when (status) {
-                    WorkStatus.Completed -> Color(0xFF2E7D32)
-                    WorkStatus.Booked -> Color(0xFF1565C0)
-                    WorkStatus.Pending -> Color(0xFFF9A825)
-                }
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Job ID: #$id",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
             )
         }
     }

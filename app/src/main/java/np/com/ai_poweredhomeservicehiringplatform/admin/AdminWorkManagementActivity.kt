@@ -15,17 +15,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +47,10 @@ import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class AdminWorkManagementActivity : ComponentActivity() {
@@ -96,122 +105,136 @@ private fun AdminWorkManagementScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LogoTopAppBar(
-                title = "Work Management",
-                actions = {
-                    Row {
-                        TextButton(onClick = onDashboardClick) { Text(text = "Dashboard", color = Color.White) }
-                        TextButton(onClick = onRequestsClick) { Text(text = "Requests", color = Color.White) }
-                        TextButton(onClick = onWorkersClick) { Text(text = "Workers", color = Color.White) }
-                        TextButton(onClick = onUsersClick) { Text(text = "Users", color = Color.White) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val navItems = listOf(
+        NavigationItem("Dashboard", Icons.Default.Dashboard, onDashboardClick),
+        NavigationItem("Requests", Icons.Default.PendingActions, onRequestsClick),
+        NavigationItem("Workers", Icons.Default.Group, onWorkersClick),
+        NavigationItem("Users", Icons.Default.Group, onUsersClick),
+        NavigationItem("Works", Icons.Default.List, { }),
+        NavigationItem("Revenue", Icons.Default.MonetizationOn, {
+            context.startActivity(Intent(context, AdminRevenueActivity::class.java))
+        }),
+        NavigationItem("Logout", Icons.Default.ExitToApp, {
+            AppStorage.setAdminLoggedIn(context, false)
+            context.startActivity(Intent(context, LoginActivity::class.java))
+            (context as? ComponentActivity)?.finish()
+        })
+    )
+
+    AppDrawer(drawerState = drawerState, items = navItems) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                LogoTopAppBar(
+                    title = "Work Management",
+                    navigationIcon = {
+                        BurgerMenuIcon(drawerState = drawerState)
                     }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(text = "Search work.") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(text = "Search work.") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-            Text(text = "Total works: ${works.size}")
+                Text(text = "Total works: ${works.size}")
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            if (works.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "No works available")
-                }
-            } else if (filteredWorks.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "No works found")
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    filteredWorks.forEach { work: WorkUiModel ->
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                if (works.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "No works available")
+                    }
+                } else if (filteredWorks.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "No works found")
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        filteredWorks.forEach { work: WorkUiModel ->
+                            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp)
                                 ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = work.workName,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = work.status.name,
+                                            color = statusColor(work.status),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
                                     Text(
-                                        text = work.workName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = work.status.name,
-                                        color = statusColor(work.status),
+                                        text = work.detail,
                                         style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                }
 
-                                Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                Text(
-                                    text = work.detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                    val workerLabel = when (work.status) {
+                                        WorkStatus.Pending -> "Worker: Not assigned"
+                                        WorkStatus.Booked -> "Worker: ${work.workerName ?: "Not assigned"}"
+                                        WorkStatus.Completed -> "Completed by: ${work.workerName ?: "Unknown"}"
+                                    }
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                    Text(text = workerLabel, style = MaterialTheme.typography.bodySmall)
 
-                                val workerLabel = when (work.status) {
-                                    WorkStatus.Pending -> "Worker: Not assigned"
-                                    WorkStatus.Booked -> "Worker: ${work.workerName ?: "Not assigned"}"
-                                    WorkStatus.Completed -> "Completed by: ${work.workerName ?: "Unknown"}"
-                                }
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                                Text(text = workerLabel, style = MaterialTheme.typography.bodySmall)
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Button(
-                                    onClick = {
-                                        val updated = works.filterNot { it.id == work.id }
-                                        works = updated
-                                        AppStorage.saveWorks(context, updated)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFD32F2F),
-                                        contentColor = Color.White
-                                    )
-                                ) {
-                                    Text(text = "Delete")
+                                    Button(
+                                        onClick = {
+                                            val updated = works.filterNot { it.id == work.id }
+                                            works = updated
+                                            AppStorage.saveWorks(context, updated)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFD32F2F),
+                                            contentColor = Color.White
+                                        )
+                                    ) {
+                                        Text(text = "Delete")
+                                    }
                                 }
                             }
                         }

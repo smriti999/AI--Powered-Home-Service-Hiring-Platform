@@ -189,6 +189,96 @@ private fun WorkerRegistrationScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 18.dp)
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Button(
+                    enabled = isFormFilled && isCvValid,
+                    onClick = {
+                        val trimmedName = fullName.trim()
+                        val trimmedEmail = email.trim()
+                        val trimmedPhone = phoneNumber.trim()
+                        val trimmedStreet = streetHomeNumber.trim()
+                        val trimmedAlt = alternativeLocation.trim()
+                        val trimmedExperience = experienceYears.trim()
+                        val cvUri = cvUriString?.let { Uri.parse(it) }
+                        val cvSize = cvSizeBytes
+                        val cvName = cvFileName
+
+                        if (trimmedName.isBlank() ||
+                            trimmedEmail.isBlank() ||
+                            trimmedPhone.isBlank() ||
+                            location.isBlank() ||
+                            trimmedStreet.isBlank() ||
+                            gender.isBlank() ||
+                            profession.isBlank() ||
+                            trimmedExperience.isBlank() ||
+                            password.isBlank()
+                        ) {
+                            errorMessage = "All fields are required"
+                            return@Button
+                        }
+
+                        if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
+                            errorMessage = "Email must end with @gmail.com"
+                            return@Button
+                        }
+
+                        if (trimmedPhone.length != 10) {
+                            errorMessage = "Phone number must be 10 digits"
+                            return@Button
+                        }
+
+                        if (cvUri != null && (cvSize == null || cvSize !in minBytes..maxBytes)) {
+                            errorMessage = "CV must be a PDF between 2MB and 5MB"
+                            return@Button
+                        }
+
+                        val apps = AppStorage.loadWorkerApplications(context)
+                        val nextId = (apps.maxOfOrNull { it.id } ?: 0) + 1
+                        val updated = apps + WorkerApplicationUiModel(
+                            id = nextId,
+                            name = trimmedName,
+                            email = trimmedEmail,
+                            phoneNumber = trimmedPhone,
+                            location = location,
+                            streetHomeNumber = trimmedStreet,
+                            alternativeLocation = trimmedAlt,
+                            gender = gender,
+                            profession = profession,
+                            experienceYears = trimmedExperience,
+                            passwordHash = sha256Hex(password),
+                            cvUri = cvUri?.toString(),
+                            cvFileName = cvName,
+                            cvSizeBytes = cvSize,
+                            status = WorkerApplicationStatus.Pending
+                        )
+                        AppStorage.saveWorkerApplications(context, updated)
+
+                        errorMessage = null
+                        showThankYouDialog = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 360.dp)
+                        .height(46.dp)
+                ) {
+                    Text(text = "REGISTER")
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -448,87 +538,6 @@ private fun WorkerRegistrationScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (errorMessage != null) {
-                Text(text = errorMessage ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            Button(
-                enabled = isFormFilled && isCvValid,
-                onClick = {
-                    val trimmedName = fullName.trim()
-                    val trimmedEmail = email.trim()
-                    val trimmedPhone = phoneNumber.trim()
-                    val trimmedStreet = streetHomeNumber.trim()
-                    val trimmedAlt = alternativeLocation.trim()
-                    val trimmedExperience = experienceYears.trim()
-                    val cvUri = cvUriString?.let { Uri.parse(it) }
-                    val cvSize = cvSizeBytes
-                    val cvName = cvFileName
-
-                    if (trimmedName.isBlank() ||
-                        trimmedEmail.isBlank() ||
-                        trimmedPhone.isBlank() ||
-                        location.isBlank() ||
-                        trimmedStreet.isBlank() ||
-                        gender.isBlank() ||
-                        profession.isBlank() ||
-                        trimmedExperience.isBlank() ||
-                        password.isBlank()
-                    ) {
-                        errorMessage = "All fields are required"
-                        return@Button
-                    }
-
-                    if (!trimmedEmail.lowercase().endsWith("@gmail.com")) {
-                        errorMessage = "Email must end with @gmail.com"
-                        return@Button
-                    }
-
-                    if (trimmedPhone.length != 10) {
-                        errorMessage = "Phone number must be 10 digits"
-                        return@Button
-                    }
-
-                    if (cvUri != null && (cvSize == null || cvSize !in minBytes..maxBytes)) {
-                        errorMessage = "CV must be a PDF between 2MB and 5MB"
-                        return@Button
-                    }
-
-                    val apps = AppStorage.loadWorkerApplications(context)
-                    val nextId = (apps.maxOfOrNull { it.id } ?: 0) + 1
-                    val updated = apps + WorkerApplicationUiModel(
-                        id = nextId,
-                        name = trimmedName,
-                        email = trimmedEmail,
-                        phoneNumber = trimmedPhone,
-                        location = location,
-                        streetHomeNumber = trimmedStreet,
-                        alternativeLocation = trimmedAlt,
-                        gender = gender,
-                        profession = profession,
-                        experienceYears = trimmedExperience,
-                        passwordHash = sha256Hex(password),
-                        cvUri = cvUri?.toString(),
-                        cvFileName = cvName,
-                        cvSizeBytes = cvSize,
-                        status = WorkerApplicationStatus.Pending
-                    )
-                    AppStorage.saveWorkerApplications(context, updated)
-
-                    errorMessage = null
-                    showThankYouDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 360.dp)
-                    .height(46.dp)
-            ) {
-                Text(text = "REGISTER")
-            }
         }
     }
 

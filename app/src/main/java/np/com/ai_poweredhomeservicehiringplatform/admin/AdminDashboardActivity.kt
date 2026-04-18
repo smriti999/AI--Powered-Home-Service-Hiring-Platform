@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ExitToApp
@@ -115,12 +117,29 @@ private fun AdminDashboardScreen(
                         BurgerMenuIcon(drawerState = drawerState)
                     }
                 )
+            },
+            bottomBar = {
+                Button(
+                    onClick = onLogoutClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .height(54.dp),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = "LOGOUT",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         ) { innerPadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 14.dp, vertical = 14.dp)
             ) {
             Row(
@@ -229,16 +248,7 @@ private fun AdminDashboardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
 
-            Button(
-                onClick = onLogoutClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-            ) {
-                Text(text = "LOGOUT")
-            }
         }
     }
 }

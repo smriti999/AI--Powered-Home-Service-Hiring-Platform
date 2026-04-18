@@ -267,15 +267,27 @@ private fun WorkerDashboardScreen(
                                                     val userEmail = extractUserEmail(work.detail)
                                                     if (userEmail != null) {
                                                         val notifications = AppStorage.loadNotifications(context)
-                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                        val updatedNotifications = notifications + NotificationUiModel(
-                                                            id = nextId,
+                                                        var nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        
+                                                        // Notify User
+                                                        val n1 = NotificationUiModel(
+                                                            id = nextId++,
                                                             userEmail = userEmail,
                                                             title = "Worker Arrived",
                                                             message = "$workerName has arrived at your location.",
                                                             timestampMillis = System.currentTimeMillis()
                                                         )
-                                                        AppStorage.saveNotifications(context, updatedNotifications)
+                                                        
+                                                        // Notify Worker
+                                                        val n2 = NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = workerEmail,
+                                                            title = "Arrival Notified",
+                                                            message = "You notified the user that you arrived for: ${work.workName}",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        
+                                                        AppStorage.saveNotifications(context, notifications + n1 + n2)
                                                     }
                                                 },
                                                 colors = ButtonDefaults.buttonColors(
@@ -302,15 +314,27 @@ private fun WorkerDashboardScreen(
                                                     val userEmail = extractUserEmail(work.detail)
                                                     if (userEmail != null) {
                                                         val notifications = AppStorage.loadNotifications(context)
-                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                        val updatedNotifications = notifications + NotificationUiModel(
-                                                            id = nextId,
+                                                        var nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        
+                                                        // Notify User
+                                                        val n1 = NotificationUiModel(
+                                                            id = nextId++,
                                                             userEmail = userEmail,
                                                             title = "Service Completed",
                                                             message = "$workerName completed the service.",
                                                             timestampMillis = System.currentTimeMillis()
                                                         )
-                                                        AppStorage.saveNotifications(context, updatedNotifications)
+                                                        
+                                                        // Notify Worker
+                                                        val n2 = NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = workerEmail,
+                                                            title = "Job Completed",
+                                                            message = "You completed the work: ${work.workName}",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        
+                                                        AppStorage.saveNotifications(context, notifications + n1 + n2)
                                                     }
                                                 },
                                                 colors = ButtonDefaults.buttonColors(
@@ -405,15 +429,27 @@ private fun WorkerDashboardScreen(
                                                         }
 
                                                         val notifications = AppStorage.loadNotifications(context)
-                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                        val updatedNotifications = notifications + NotificationUiModel(
-                                                            id = nextId,
+                                                        var nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        
+                                                        // Notify User
+                                                        val n1 = NotificationUiModel(
+                                                            id = nextId++,
                                                             userEmail = userEmail,
                                                             title = "Booking Confirmed",
                                                             message = "$workerName accepted your request.",
                                                             timestampMillis = System.currentTimeMillis()
                                                         )
-                                                        AppStorage.saveNotifications(context, updatedNotifications)
+                                                        
+                                                        // Notify Worker
+                                                        val n2 = NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = workerEmail,
+                                                            title = "Job Accepted",
+                                                            message = "You accepted the job: ${work.workName}",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        
+                                                        AppStorage.saveNotifications(context, notifications + n1 + n2)
                                                     }
                                                 },
                                                 colors = ButtonDefaults.buttonColors(

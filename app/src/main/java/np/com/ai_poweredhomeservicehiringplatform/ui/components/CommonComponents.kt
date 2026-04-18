@@ -1,6 +1,7 @@
 package np.com.ai_poweredhomeservicehiringplatform.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,6 +36,27 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import np.com.ai_poweredhomeservicehiringplatform.R
 
+@Composable
+fun StarRating(
+    rating: Int,
+    maxStars: Int = 5,
+    onRatingChange: ((Int) -> Unit)? = null,
+    starSize: androidx.compose.ui.unit.Dp = 24.dp
+) {
+    Row {
+        for (i in 1..maxStars) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = "Star $i",
+                modifier = Modifier
+                    .size(starSize)
+                    .then(if (onRatingChange != null) Modifier.clickable { onRatingChange(i) } else Modifier),
+                tint = if (i <= rating) Color(0xFFFFC107) else Color(0xFFEEEEEE)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogoTopAppBar(
@@ -42,25 +64,26 @@ fun LogoTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    CenterAlignedTopAppBar(
+    TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Logo",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
                 )
             }
         },
         navigationIcon = navigationIcon,
         actions = actions,
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = Color.White,
             navigationIconContentColor = Color.White,

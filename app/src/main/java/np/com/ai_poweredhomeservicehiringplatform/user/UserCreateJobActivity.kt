@@ -178,6 +178,61 @@ private fun UserCreateJobScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 18.dp)
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Button(
+                    onClick = {
+                        val s = service.trim()
+                        val d = description.trim()
+                        val t = time.trim()
+                        val loc = location.trim()
+                        val street = streetHomeNumber.trim()
+                        val alt = alternativeLocation.trim()
+
+                        if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank() || (loc.isNotBlank() && street.isBlank())) {
+                            errorMessage = "All fields are required"
+                            return@Button
+                        }
+
+                        errorMessage = null
+                        val fullDescription = buildString {
+                            append("Time: ")
+                            append(t)
+                            append("\nLocation: ")
+                            append(loc)
+                            append("\nStreet/Home: ")
+                            append(street)
+                            if (alt.isNotBlank()) {
+                                append("\nOptional: ")
+                                append(alt)
+                            }
+                            append("\n\n")
+                            append(d)
+                        }
+                        onSubmit(s, fullDescription, t, loc)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                        .height(46.dp)
+                ) {
+                    Text(text = "Post Job")
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -345,52 +400,6 @@ private fun UserCreateJobScreen(
                         .fillMaxWidth()
                         .widthIn(max = 420.dp)
                 )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            if (errorMessage != null) {
-                Text(text = errorMessage ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            Button(
-                onClick = {
-                    val s = service.trim()
-                    val d = description.trim()
-                    val t = time.trim()
-                    val loc = location.trim()
-                    val street = streetHomeNumber.trim()
-                    val alt = alternativeLocation.trim()
-
-                    if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank() || (loc.isNotBlank() && street.isBlank())) {
-                        errorMessage = "All fields are required"
-                        return@Button
-                    }
-
-                    errorMessage = null
-                    val fullDescription = buildString {
-                        append("Time: ")
-                        append(t)
-                        append("\nLocation: ")
-                        append(loc)
-                        append("\nStreet/Home: ")
-                        append(street)
-                        if (alt.isNotBlank()) {
-                            append("\nOptional: ")
-                            append(alt)
-                        }
-                        append("\n\n")
-                        append(d)
-                    }
-                    onSubmit(s, fullDescription, t, loc)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 420.dp)
-                    .height(46.dp)
-            ) {
-                Text(text = "Post Job")
             }
         }
     }

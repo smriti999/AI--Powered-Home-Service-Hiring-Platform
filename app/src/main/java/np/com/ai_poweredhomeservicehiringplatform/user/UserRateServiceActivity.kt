@@ -135,6 +135,86 @@ private fun RateServiceScreen(
                     titleContentColor = Color.White
                 )
             )
+        },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                Button(
+                    onClick = {
+                        if (workId <= 0) {
+                            errorMessage = "Invalid booking"
+                            return@Button
+                        }
+                        if (stars !in 1..5) {
+                            errorMessage = "Please select rating"
+                            return@Button
+                        }
+
+                        val ratings = AppStorage.loadRatings(context)
+                        val existing = ratings.firstOrNull { it.workId == workId && it.userEmail.equals(userEmail, ignoreCase = true) }
+                        val updatedRatings = if (existing != null) {
+                            ratings.map {
+                                if (it.id == existing.id) {
+                                    it.copy(
+                                        stars = stars,
+                                        review = review.trim(),
+                                        timestampMillis = System.currentTimeMillis()
+                                    )
+                                } else it
+                            }
+                        } else {
+                            val nextId = (ratings.maxOfOrNull { it.id } ?: 0) + 1
+                            ratings + RatingUiModel(
+                                id = nextId,
+                                workId = workId,
+                                userEmail = userEmail,
+                                workerName = workerName.ifBlank { "Worker" },
+                                profession = profession,
+                                stars = stars,
+                                review = review.trim(),
+                                timestampMillis = System.currentTimeMillis()
+                            )
+                        }
+                        AppStorage.saveRatings(context, updatedRatings)
+
+                        val notifications = AppStorage.loadNotifications(context)
+                        val nextNId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                        val updatedNotifications = notifications + NotificationUiModel(
+                            id = nextNId,
+                            userEmail = userEmail,
+                            title = "Review Submitted",
+                            message = "Thanks for rating $stars/5.",
+                            timestampMillis = System.currentTimeMillis()
+                        )
+                        AppStorage.saveNotifications(context, updatedNotifications)
+
+                        showThanksDialog = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RectangleShape
+                ) {
+                    Text(
+                        text = "SUBMIT REVIEW",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -207,77 +287,6 @@ private fun RateServiceScreen(
                     .height(140.dp),
                 shape = MaterialTheme.shapes.medium
             )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            if (errorMessage != null) {
-                Text(text = errorMessage ?: "", color = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            Button(
-                onClick = {
-                    if (workId <= 0) {
-                        errorMessage = "Invalid booking"
-                        return@Button
-                    }
-                    if (stars !in 1..5) {
-                        errorMessage = "Please select rating"
-                        return@Button
-                    }
-
-                    val ratings = AppStorage.loadRatings(context)
-                    val existing = ratings.firstOrNull { it.workId == workId && it.userEmail.equals(userEmail, ignoreCase = true) }
-                    val updatedRatings = if (existing != null) {
-                        ratings.map {
-                            if (it.id == existing.id) {
-                                it.copy(
-                                    stars = stars,
-                                    review = review.trim(),
-                                    timestampMillis = System.currentTimeMillis()
-                                )
-                            } else it
-                        }
-                    } else {
-                        val nextId = (ratings.maxOfOrNull { it.id } ?: 0) + 1
-                        ratings + RatingUiModel(
-                            id = nextId,
-                            workId = workId,
-                            userEmail = userEmail,
-                            workerName = workerName.ifBlank { "Worker" },
-                            profession = profession,
-                            stars = stars,
-                            review = review.trim(),
-                            timestampMillis = System.currentTimeMillis()
-                        )
-                    }
-                    AppStorage.saveRatings(context, updatedRatings)
-
-                    val notifications = AppStorage.loadNotifications(context)
-                    val nextNId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                    val updatedNotifications = notifications + NotificationUiModel(
-                        id = nextNId,
-                        userEmail = userEmail,
-                        title = "Review Submitted",
-                        message = "Thanks for rating $stars/5.",
-                        timestampMillis = System.currentTimeMillis()
-                    )
-                    AppStorage.saveNotifications(context, updatedNotifications)
-
-                    showThanksDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                shape = RectangleShape
-            ) {
-                Text(
-                    text = "SUBMIT REVIEW",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
         }
     }
 
