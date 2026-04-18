@@ -13,22 +13,34 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class AdminDashboardActivity : ComponentActivity() {
@@ -82,18 +94,35 @@ private fun AdminDashboardScreen(
     val pendingJobs = works.count { it.status == np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus.Pending }
     val revenue = payments.filter { it.status == np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus.Paid }.sumOf { it.amountNpr }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LogoTopAppBar(title = "Admin Dashboard")
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 14.dp, vertical = 14.dp)
-        ) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val navItems = listOf(
+        NavigationItem("Dashboard", Icons.Default.Dashboard, { }),
+        NavigationItem("Requests", Icons.Default.PendingActions, onRequestsClick),
+        NavigationItem("Workers", Icons.Default.Group, onWorkersClick),
+        NavigationItem("Users", Icons.Default.Group, onUsersClick),
+        NavigationItem("Works", Icons.Default.List, onWorksClick),
+        NavigationItem("Revenue", Icons.Default.MonetizationOn, onRevenueClick),
+        NavigationItem("Logout", Icons.Default.ExitToApp, onLogoutClick)
+    )
+
+    AppDrawer(drawerState = drawerState, items = navItems) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                LogoTopAppBar(
+                    title = "Admin Dashboard",
+                    navigationIcon = {
+                        BurgerMenuIcon(drawerState = drawerState)
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 14.dp, vertical = 14.dp)
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -212,5 +241,6 @@ private fun AdminDashboardScreen(
             }
         }
     }
+}
 }
 

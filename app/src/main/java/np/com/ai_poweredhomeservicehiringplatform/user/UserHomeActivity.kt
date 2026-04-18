@@ -16,8 +16,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -27,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +43,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class UserHomeActivity : ComponentActivity() {
@@ -95,30 +106,35 @@ private fun UserHomeScreen(
         "Electrical Services",
         "Others"
     )
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LogoTopAppBar(
-                title = "Home",
-                actions = {
-                    TextButton(onClick = onProfileClick) {
-                        Text(text = "Profile", color = Color.White)
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val navItems = listOf(
+        NavigationItem("Home", Icons.Default.Home, { }),
+        NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
+        NavigationItem("My Jobs", Icons.Default.List, onMyJobsClick),
+        NavigationItem("Notifications", Icons.Default.Notifications, onNotificationsClick),
+        NavigationItem("Logout", Icons.Default.ExitToApp, onLogoutClick)
+    )
+
+    AppDrawer(drawerState = drawerState, items = navItems) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                LogoTopAppBar(
+                    title = "Home",
+                    navigationIcon = {
+                        BurgerMenuIcon(drawerState = drawerState)
                     }
-                    TextButton(onClick = onNotificationsClick) {
-                        Text(text = "Notifications", color = Color.White)
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.Start
-        ) {
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.Start
+            ) {
             OutlinedTextField(
                 value = "",
                 onValueChange = { },
@@ -196,4 +212,5 @@ private fun UserHomeScreen(
 
         }
     }
+}
 }

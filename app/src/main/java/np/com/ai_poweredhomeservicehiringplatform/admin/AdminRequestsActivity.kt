@@ -220,9 +220,14 @@ private fun AdminRequestsScreen(
                                 }
 
                                 Button(
-                                    onClick = { onOpenCv(Uri.parse(app.cvUri)) }
+                                    onClick = {
+                                        app.cvUri?.let { uriStr ->
+                                            onOpenCv(Uri.parse(uriStr))
+                                        }
+                                    },
+                                    enabled = app.cvUri != null
                                 ) {
-                                    Text(text = "View CV")
+                                    Text(text = if (app.cvUri != null) "View CV" else "No CV")
                                 }
                             }
                         }

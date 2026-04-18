@@ -15,9 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
@@ -26,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +50,10 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class WorkerDashboardActivity : ComponentActivity() {
@@ -61,6 +70,7 @@ class WorkerDashboardActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 WorkerDashboardScreen(
+                    onProfileClick = { startActivity(Intent(this, WorkerProfileActivity::class.java)) },
                     onLogout = {
                         AppStorage.setWorkerLoggedIn(this, false, null)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -103,6 +113,7 @@ private fun extractUserEmail(detail: String): String? {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WorkerDashboardScreen(
+    onProfileClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -132,6 +143,13 @@ private fun WorkerDashboardScreen(
                 work.detail.contains(searchQuery.trim(), ignoreCase = true))
     }
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val navItems = listOf(
+        NavigationItem("Dashboard", Icons.Default.Dashboard, { }),
+        NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
+        NavigationItem("Logout", Icons.Default.ExitToApp, onLogout)
+    )
+
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
             WorkStatus.Pending -> Color(0xFFF9A825)
@@ -140,268 +158,268 @@ private fun WorkerDashboardScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            LogoTopAppBar(
-                title = "Worker Dashboard",
-                actions = {
-                    TextButton(onClick = onLogout) {
-                        Text(text = "Logout", color = Color.White)
+    AppDrawer(drawerState = drawerState, items = navItems) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                LogoTopAppBar(
+                    title = "Worker Dashboard",
+                    navigationIcon = {
+                        BurgerMenuIcon(drawerState = drawerState)
                     }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-        ) {
-            Text(
-                text = profession.ifBlank { "Profession: -" },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Text(
+                    text = profession.ifBlank { "Profession: -" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-            Spacer(modifier = Modifier.padding(top = 10.dp))
+                Spacer(modifier = Modifier.padding(top = 10.dp))
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(text = "Search jobs...") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(text = "Search jobs...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            Spacer(modifier = Modifier.padding(top = 12.dp))
+                Spacer(modifier = Modifier.padding(top = 12.dp))
 
-            if (profession.isBlank()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "No profession found for this worker")
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(text = "Active", fontWeight = FontWeight.SemiBold)
+                if (profession.isBlank()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "No profession found for this worker")
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(text = "Active", fontWeight = FontWeight.SemiBold)
 
-                    if (activeWorks.isEmpty()) {
-                        Text(
-                            text = "No active jobs",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        activeWorks.forEach { work: WorkUiModel ->
-                            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                        if (activeWorks.isEmpty()) {
+                            Text(
+                                text = "No active jobs",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            activeWorks.forEach { work: WorkUiModel ->
+                                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = work.workName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "Confirmed",
+                                                color = statusColor(work.status),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.padding(top = 6.dp))
+
                                         Text(
-                                            text = work.workName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        Text(
-                                            text = "Confirmed",
-                                            color = statusColor(work.status),
+                                            text = work.detail,
                                             style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                    }
 
-                                    Spacer(modifier = Modifier.padding(top = 6.dp))
+                                        Spacer(modifier = Modifier.padding(top = 10.dp))
 
-                                    Text(
-                                        text = work.detail,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-
-                                    Spacer(modifier = Modifier.padding(top = 10.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Button(
-                                            onClick = {
-                                                val userEmail = extractUserEmail(work.detail)
-                                                if (userEmail != null) {
-                                                    val notifications = AppStorage.loadNotifications(context)
-                                                    val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                    val updatedNotifications = notifications + NotificationUiModel(
-                                                        id = nextId,
-                                                        userEmail = userEmail,
-                                                        title = "Worker Arrived",
-                                                        message = "$workerName has arrived at your location.",
-                                                        timestampMillis = System.currentTimeMillis()
-                                                    )
-                                                    AppStorage.saveNotifications(context, updatedNotifications)
-                                                }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF2E7D32),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.height(36.dp)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(text = "Arrived")
-                                        }
-
-                                        Button(
-                                            onClick = {
-                                                val updatedWorks = works.map { existing ->
-                                                    if (existing.id == work.id) {
-                                                        existing.copy(status = WorkStatus.Completed)
-                                                    } else {
-                                                        existing
+                                            Button(
+                                                onClick = {
+                                                    val userEmail = extractUserEmail(work.detail)
+                                                    if (userEmail != null) {
+                                                        val notifications = AppStorage.loadNotifications(context)
+                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        val updatedNotifications = notifications + NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = userEmail,
+                                                            title = "Worker Arrived",
+                                                            message = "$workerName has arrived at your location.",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        AppStorage.saveNotifications(context, updatedNotifications)
                                                     }
-                                                }
-                                                works = updatedWorks
-                                                AppStorage.saveWorks(context, updatedWorks)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF2E7D32),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                Text(text = "Arrived")
+                                            }
 
-                                                val userEmail = extractUserEmail(work.detail)
-                                                if (userEmail != null) {
-                                                    val notifications = AppStorage.loadNotifications(context)
-                                                    val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                    val updatedNotifications = notifications + NotificationUiModel(
-                                                        id = nextId,
-                                                        userEmail = userEmail,
-                                                        title = "Service Completed",
-                                                        message = "$workerName completed the service.",
-                                                        timestampMillis = System.currentTimeMillis()
-                                                    )
-                                                    AppStorage.saveNotifications(context, updatedNotifications)
-                                                }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF1565C0),
-                                                contentColor = Color.White
-                                            ),
-                                            modifier = Modifier.height(36.dp)
-                                        ) {
-                                            Text(text = "Complete")
+                                            Button(
+                                                onClick = {
+                                                    val updatedWorks = works.map { existing ->
+                                                        if (existing.id == work.id) {
+                                                            existing.copy(status = WorkStatus.Completed)
+                                                        } else {
+                                                            existing
+                                                        }
+                                                    }
+                                                    works = updatedWorks
+                                                    AppStorage.saveWorks(context, updatedWorks)
+
+                                                    val userEmail = extractUserEmail(work.detail)
+                                                    if (userEmail != null) {
+                                                        val notifications = AppStorage.loadNotifications(context)
+                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        val updatedNotifications = notifications + NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = userEmail,
+                                                            title = "Service Completed",
+                                                            message = "$workerName completed the service.",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        AppStorage.saveNotifications(context, updatedNotifications)
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF1565C0),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                Text(text = "Complete")
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.padding(top = 10.dp))
+                        Spacer(modifier = Modifier.padding(top = 10.dp))
 
-                    Text(text = "Available", fontWeight = FontWeight.SemiBold)
+                        Text(text = "Available", fontWeight = FontWeight.SemiBold)
 
-                    if (availableWorks.isEmpty()) {
-                        Text(
-                            text = "No jobs available for $profession",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        availableWorks.forEach { work: WorkUiModel ->
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = work.workName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = work.status.name,
-                                        color = statusColor(work.status),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
+                        if (availableWorks.isEmpty()) {
+                            Text(
+                                text = "No jobs available for $profession",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            availableWorks.forEach { work: WorkUiModel ->
+                                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = work.workName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = work.status.name,
+                                                color = statusColor(work.status),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
 
-                                Spacer(modifier = Modifier.padding(top = 6.dp))
+                                        Spacer(modifier = Modifier.padding(top = 6.dp))
 
-                                Text(
-                                    text = work.detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                        Text(
+                                            text = work.detail,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
 
-                                Spacer(modifier = Modifier.padding(top = 10.dp))
+                                        Spacer(modifier = Modifier.padding(top = 10.dp))
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            val updatedWorks = works.map { existing ->
-                                                if (existing.id == work.id) {
-                                                    existing.copy(status = WorkStatus.Booked, workerName = workerName)
-                                                } else {
-                                                    existing
-                                                }
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    val updatedWorks = works.map { existing ->
+                                                        if (existing.id == work.id) {
+                                                            existing.copy(status = WorkStatus.Booked, workerName = workerName)
+                                                        } else {
+                                                            existing
+                                                        }
+                                                    }
+                                                    works = updatedWorks
+                                                    AppStorage.saveWorks(context, updatedWorks)
+
+                                                    val userEmail = extractUserEmail(work.detail)
+                                                    if (userEmail != null) {
+                                                        val payments = AppStorage.loadPayments(context)
+                                                        val existingPayment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
+                                                        if (existingPayment == null) {
+                                                            val nextPaymentId = (payments.maxOfOrNull { it.id } ?: 0) + 1
+                                                            val updatedPayments = payments + PaymentUiModel(
+                                                                id = nextPaymentId,
+                                                                workId = work.id,
+                                                                userEmail = userEmail,
+                                                                amountNpr = 0,
+                                                                method = null,
+                                                                status = PaymentStatus.Pending,
+                                                                timestampMillis = System.currentTimeMillis()
+                                                            )
+                                                            AppStorage.savePayments(context, updatedPayments)
+                                                        }
+
+                                                        val notifications = AppStorage.loadNotifications(context)
+                                                        val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                                                        val updatedNotifications = notifications + NotificationUiModel(
+                                                            id = nextId,
+                                                            userEmail = userEmail,
+                                                            title = "Booking Confirmed",
+                                                            message = "$workerName accepted your request.",
+                                                            timestampMillis = System.currentTimeMillis()
+                                                        )
+                                                        AppStorage.saveNotifications(context, updatedNotifications)
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFF1565C0),
+                                                    contentColor = Color.White
+                                                ),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                Text(text = "Accept")
                                             }
-                                            works = updatedWorks
-                                            AppStorage.saveWorks(context, updatedWorks)
-
-                                            val userEmail = extractUserEmail(work.detail)
-                                            if (userEmail != null) {
-                                                val payments = AppStorage.loadPayments(context)
-                                                val existingPayment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
-                                                if (existingPayment == null) {
-                                                    val nextPaymentId = (payments.maxOfOrNull { it.id } ?: 0) + 1
-                                                    val updatedPayments = payments + PaymentUiModel(
-                                                        id = nextPaymentId,
-                                                        workId = work.id,
-                                                        userEmail = userEmail,
-                                                        amountNpr = 0,
-                                                        method = null,
-                                                        status = PaymentStatus.Pending,
-                                                        timestampMillis = System.currentTimeMillis()
-                                                    )
-                                                    AppStorage.savePayments(context, updatedPayments)
-                                                }
-
-                                                val notifications = AppStorage.loadNotifications(context)
-                                                val nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                                                val updatedNotifications = notifications + NotificationUiModel(
-                                                    id = nextId,
-                                                    userEmail = userEmail,
-                                                    title = "Booking Confirmed",
-                                                    message = "$workerName accepted your request.",
-                                                    timestampMillis = System.currentTimeMillis()
-                                                )
-                                                AppStorage.saveNotifications(context, updatedNotifications)
-                                            }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF1565C0),
-                                            contentColor = Color.White
-                                        ),
-                                        modifier = Modifier.height(36.dp)
-                                    ) {
-                                        Text(text = "Accept")
+                                        }
                                     }
                                 }
                             }
-                        }
                         }
                     }
                 }
