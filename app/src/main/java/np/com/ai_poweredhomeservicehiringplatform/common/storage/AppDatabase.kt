@@ -179,6 +179,9 @@ interface AppDao {
     @Query("SELECT * FROM worker_settings WHERE workerEmail = :workerEmail LIMIT 1")
     fun getWorkerSettings(workerEmail: String): WorkerSettingsUiModel?
 
+    @Query("SELECT * FROM worker_settings")
+    fun getAllWorkerSettings(): List<WorkerSettingsUiModel>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsertWorkerSettings(settings: WorkerSettingsUiModel)
 }
@@ -202,4 +205,3 @@ interface AppDao {
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): AppDao
 }
-

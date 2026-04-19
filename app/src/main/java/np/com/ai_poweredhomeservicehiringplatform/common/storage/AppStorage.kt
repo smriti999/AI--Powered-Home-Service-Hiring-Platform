@@ -189,6 +189,10 @@ object AppStorage {
         return dao(context).getWorkerSettings(workerEmail.lowercase())?.available ?: true
     }
 
+    fun loadAllWorkerSettings(context: Context): List<WorkerSettingsUiModel> {
+        return dao(context).getAllWorkerSettings()
+    }
+
     fun saveWorkerAvailability(context: Context, workerEmail: String, available: Boolean) {
         if (workerEmail.isBlank()) return
         val key = workerEmail.lowercase()

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
+import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
@@ -45,6 +46,7 @@ import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceH
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 const val EXTRA_WORKER_EMAIL = "extra_worker_email"
 
@@ -84,6 +86,8 @@ private fun UserWorkersScreen(
     val workers = remember { AppStorage.loadWorkers(context) }
     val ratings = remember { AppStorage.loadRatings(context) }
     val works = remember { AppStorage.loadWorks(context) }
+    val payments = remember { AppStorage.loadPayments(context) }
+    val workerSettings = remember { AppStorage.loadAllWorkerSettings(context) }
     val userEmail = remember { AppStorage.currentUserEmail(context).orEmpty() }
     val userLocation = remember(userEmail) {
         AppStorage.loadUsers(context).firstOrNull { it.email.equals(userEmail, ignoreCase = true) }?.location.orEmpty()
@@ -93,6 +97,10 @@ private fun UserWorkersScreen(
 
     val globalMean = remember(ratings) {
         if (ratings.isEmpty()) 0.0 else ratings.map { it.stars }.average()
+    }
+
+    val availabilityByWorkerEmail = remember(workerSettings) {
+        workerSettings.associate { it.workerEmail.lowercase() to it.available }
     }
 
     val visibleWorkers = workers
@@ -108,13 +116,17 @@ private fun UserWorkersScreen(
             compareByDescending<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel> { worker ->
                 workerRecommendationScore(
                     workerName = worker.name,
+                    workerEmail = worker.email,
                     workerProfession = worker.profession,
                     workerLocation = worker.location,
                     workerExperienceYears = worker.experienceYears,
                     globalMeanStars = globalMean,
                     allRatings = ratings,
                     allWorks = works,
-                    userLocation = userLocation
+                    allPayments = payments,
+                    isAvailable = availabilityByWorkerEmail[worker.email.lowercase()] ?: true,
+                    userLocation = userLocation,
+                    searchQuery = search
                 )
             }.thenByDescending { worker ->
                 val workerRatings = ratings.filter { it.workerName.equals(worker.name, ignoreCase = true) }
@@ -241,18 +253,39 @@ private fun bayesianAverageStars(
 
 private fun workerRecommendationScore(
     workerName: String,
+    workerEmail: String,
     workerProfession: String,
     workerLocation: String,
     workerExperienceYears: String,
     globalMeanStars: Double,
     allRatings: List<np.com.ai_poweredhomeservicehiringplatform.common.model.RatingUiModel>,
     allWorks: List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel>,
-    userLocation: String
+    allPayments: List<np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel>,
+    isAvailable: Boolean,
+    userLocation: String,
+    searchQuery: String
 ): Double {
     val workerRatings = allRatings.filter { it.workerName.equals(workerName, ignoreCase = true) }
     val reviewCount = workerRatings.size
     val avgStars = if (reviewCount == 0) 0.0 else workerRatings.map { it.stars }.average()
     val bayes = bayesianAverageStars(avgStars, reviewCount, globalMeanStars, m = 8)
+    val wilson = wilsonLowerBound(
+        avgStars = if (reviewCount == 0) globalMeanStars else avgStars,
+        reviewCount = reviewCount,
+        maxStars = 5.0,
+        z = 1.96
+    )
+    val ratingQuality = (0.6 * (bayes / 5.0)) + (0.4 * wilson)
+
+    val nowMillis = System.currentTimeMillis()
+    val recencyScore = if (workerRatings.isEmpty()) 0.0 else {
+        val halfLifeDays = 45.0
+        val weights = workerRatings.map { r ->
+            val ageDays = ((nowMillis - r.timestampMillis).coerceAtLeast(0L)).toDouble() / (1000.0 * 60.0 * 60.0 * 24.0)
+            expDecay(ageDays, halfLifeDays).coerceIn(0.0, 1.0)
+        }
+        weights.average().coerceIn(0.0, 1.0)
+    }
 
     val experience = parseIntOrZero(workerExperienceYears)
     val expScore = min(experience / 10.0, 1.0)
@@ -263,16 +296,122 @@ private fun workerRecommendationScore(
     }
     val demandScore = min(ln(1.0 + demand.toDouble()) / ln(1.0 + 20.0), 1.0)
 
-    val locationScore = if (userLocation.isNotBlank() && workerLocation.equals(userLocation, ignoreCase = true)) 1.0 else 0.0
+    val locationScore = locationSimilarity(userLocation, workerLocation)
 
     val reviewScore = min(ln(1.0 + reviewCount.toDouble()) / ln(1.0 + 50.0), 1.0)
 
-    val professionScore = if (workerProfession.isNotBlank()) 1.0 else 0.0
+    val professionScore = professionMatchScore(searchQuery, workerProfession)
 
-    return (0.55 * (bayes / 5.0)) +
-        (0.20 * reviewScore) +
-        (0.15 * expScore) +
-        (0.07 * locationScore) +
-        (0.03 * demandScore) +
-        (0.00 * professionScore)
+    val valueScore = workerValueScore(
+        workerName = workerName,
+        allWorks = allWorks,
+        allPayments = allPayments
+    )
+
+    val availabilityScore = if (isAvailable) 1.0 else 0.0
+
+    val emailBonus = if (workerEmail.isNotBlank()) 1.0 else 0.0
+
+    return (0.40 * ratingQuality) +
+        (0.14 * reviewScore) +
+        (0.12 * expScore) +
+        (0.10 * recencyScore) +
+        (0.08 * locationScore) +
+        (0.08 * valueScore) +
+        (0.05 * professionScore) +
+        (0.02 * demandScore) +
+        (0.01 * availabilityScore) +
+        (0.00 * emailBonus)
+}
+
+private fun wilsonLowerBound(
+    avgStars: Double,
+    reviewCount: Int,
+    maxStars: Double,
+    z: Double
+): Double {
+    val n = max(0, reviewCount)
+    if (n == 0) return (avgStars / maxStars).coerceIn(0.0, 1.0)
+    val p = (avgStars / maxStars).coerceIn(0.0, 1.0)
+    val z2 = z * z
+    val denom = 1.0 + (z2 / n.toDouble())
+    val centre = p + (z2 / (2.0 * n.toDouble()))
+    val margin = z * sqrt((p * (1.0 - p) + (z2 / (4.0 * n.toDouble()))) / n.toDouble())
+    return ((centre - margin) / denom).coerceIn(0.0, 1.0)
+}
+
+private fun expDecay(ageDays: Double, halfLifeDays: Double): Double {
+    if (halfLifeDays <= 0.0) return 0.0
+    val lambda = ln(2.0) / halfLifeDays
+    return kotlin.math.exp(-lambda * max(0.0, ageDays))
+}
+
+private fun locationSimilarity(userLocation: String, workerLocation: String): Double {
+    val u = tokenize(userLocation)
+    val w = tokenize(workerLocation)
+    if (u.isEmpty() || w.isEmpty()) return 0.0
+    val intersection = u.intersect(w).size.toDouble()
+    val union = u.union(w).size.toDouble().coerceAtLeast(1.0)
+    return (intersection / union).coerceIn(0.0, 1.0)
+}
+
+private fun professionMatchScore(searchQuery: String, workerProfession: String): Double {
+    val q = searchQuery.trim()
+    if (q.isBlank()) return 0.0
+    val qTokens = tokenize(q)
+    val pTokens = tokenize(workerProfession)
+    if (qTokens.isEmpty() || pTokens.isEmpty()) return 0.0
+    val overlap = qTokens.intersect(pTokens).size.toDouble()
+    val denom = min(qTokens.size.toDouble(), pTokens.size.toDouble()).coerceAtLeast(1.0)
+    return (overlap / denom).coerceIn(0.0, 1.0)
+}
+
+private fun tokenize(raw: String): Set<String> {
+    return raw.lowercase()
+        .split(' ', ',', '-', '/', '|', '.', ':', ';')
+        .map { it.trim() }
+        .filter { it.length >= 2 }
+        .toSet()
+}
+
+private fun workerValueScore(
+    workerName: String,
+    allWorks: List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel>,
+    allPayments: List<np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel>
+): Double {
+    if (allPayments.isEmpty()) return 0.5
+    val workIdToWorker = allWorks
+        .filter { it.workerName != null }
+        .associate { it.id to (it.workerName ?: "") }
+
+    val paidAmounts = allPayments
+        .asSequence()
+        .filter { it.status == PaymentStatus.Paid }
+        .mapNotNull { p ->
+            val wName = workIdToWorker[p.workId] ?: return@mapNotNull null
+            if (!wName.equals(workerName, ignoreCase = true)) return@mapNotNull null
+            p.amountNpr
+        }
+        .toList()
+
+    if (paidAmounts.isEmpty()) return 0.5
+
+    val median = paidAmounts.sorted().let { list ->
+        val mid = list.size / 2
+        if (list.size % 2 == 1) list[mid].toDouble() else (list[mid - 1] + list[mid]).toDouble() / 2.0
+    }
+
+    val allPaidMedians = allPayments
+        .asSequence()
+        .filter { it.status == PaymentStatus.Paid }
+        .map { it.amountNpr.toDouble() }
+        .toList()
+
+    if (allPaidMedians.isEmpty()) return 0.5
+    val minPrice = allPaidMedians.minOrNull() ?: return 0.5
+    val maxPrice = allPaidMedians.maxOrNull() ?: return 0.5
+    if (maxPrice <= minPrice) return 0.5
+
+    val normalized = ((median - minPrice) / (maxPrice - minPrice)).coerceIn(0.0, 1.0)
+    return (1.0 - normalized).coerceIn(0.0, 1.0)
 }
