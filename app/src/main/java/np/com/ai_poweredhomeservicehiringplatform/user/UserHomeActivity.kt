@@ -18,10 +18,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
@@ -69,6 +71,8 @@ class UserHomeActivity : ComponentActivity() {
                     onMyJobsClick = { startActivity(Intent(this, UserJobsActivity::class.java)) },
                     onNotificationsClick = { startActivity(Intent(this, UserNotificationsActivity::class.java)) },
                     onProfileClick = { startActivity(Intent(this, UserProfileActivity::class.java)) },
+                    onFindWorkersClick = { startActivity(Intent(this, UserWorkersActivity::class.java)) },
+                    onSupportClick = { startActivity(Intent(this, UserSupportActivity::class.java)) },
                     onCategoryClick = { category ->
                         if (category == "Others") {
                             startActivity(Intent(this, UserCategoriesActivity::class.java))
@@ -97,6 +101,8 @@ private fun UserHomeScreen(
     onMyJobsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onFindWorkersClick: () -> Unit,
+    onSupportClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
     onLogoutClick: () -> Unit
 ) {
@@ -109,10 +115,12 @@ private fun UserHomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val navItems = listOf(
         NavigationItem("Home", Icons.Default.Home, { }),
+        NavigationItem("Find Workers", Icons.Default.Search, onFindWorkersClick),
         NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
-        NavigationItem("My Jobs", Icons.Default.List, onMyJobsClick),
+        NavigationItem("My Jobs", Icons.AutoMirrored.Filled.List, onMyJobsClick),
         NavigationItem("Notifications", Icons.Default.Notifications, onNotificationsClick),
-        NavigationItem("Logout", Icons.Default.ExitToApp, onLogoutClick)
+        NavigationItem("Support", Icons.AutoMirrored.Filled.Help, onSupportClick),
+        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, onLogoutClick)
     )
 
     AppDrawer(drawerState = drawerState, items = navItems) {

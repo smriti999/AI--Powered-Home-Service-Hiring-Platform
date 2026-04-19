@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.ToggleOn
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -75,6 +77,13 @@ class WorkerDashboardActivity : ComponentActivity() {
                     onProfileClick = { startActivity(Intent(this, WorkerProfileActivity::class.java)) },
                     onEarningsClick = { startActivity(Intent(this, WorkerEarningsActivity::class.java)) },
                     onNotificationsClick = { startActivity(Intent(this, WorkerNotificationsActivity::class.java)) },
+                    onAvailabilityClick = { startActivity(Intent(this, WorkerAvailabilityActivity::class.java)) },
+                    onPayoutClick = { startActivity(Intent(this, WorkerPayoutSettingsActivity::class.java)) },
+                    onOpenWork = { workId ->
+                        val intent = Intent(this, WorkerJobDetailsActivity::class.java)
+                        intent.putExtra(EXTRA_WORK_DETAIL_ID, workId)
+                        startActivity(intent)
+                    },
                     onLogout = {
                         AppStorage.setWorkerLoggedIn(this, false, null)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -120,6 +129,9 @@ private fun WorkerDashboardScreen(
     onProfileClick: () -> Unit,
     onEarningsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
+    onAvailabilityClick: () -> Unit,
+    onPayoutClick: () -> Unit,
+    onOpenWork: (workId: Int) -> Unit,
     onLogout: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -155,7 +167,9 @@ private fun WorkerDashboardScreen(
         NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
         NavigationItem("Earnings", Icons.Default.Payments, onEarningsClick),
         NavigationItem("Notifications", Icons.Default.Notifications, onNotificationsClick),
-        NavigationItem("Logout", Icons.Default.ExitToApp, onLogout)
+        NavigationItem("Availability", Icons.Default.ToggleOn, onAvailabilityClick),
+        NavigationItem("Payout", Icons.Default.AccountBalanceWallet, onPayoutClick),
+        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, onLogout)
     )
 
     fun statusColor(status: WorkStatus): Color {
@@ -227,7 +241,10 @@ private fun WorkerDashboardScreen(
                             )
                         } else {
                             activeWorks.forEach { work: WorkUiModel ->
-                                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = { onOpenWork(work.id) }
+                                ) {
                                     Column(modifier = Modifier.padding(14.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -363,7 +380,10 @@ private fun WorkerDashboardScreen(
                             )
                         } else {
                             availableWorks.forEach { work: WorkUiModel ->
-                                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = { onOpenWork(work.id) }
+                                ) {
                                     Column(modifier = Modifier.padding(14.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),

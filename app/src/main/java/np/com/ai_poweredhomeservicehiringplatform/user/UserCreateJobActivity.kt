@@ -72,9 +72,11 @@ class UserCreateJobActivity : ComponentActivity() {
             AIPoweredHomeServiceHiringPlatformTheme {
                 val email = AppStorage.currentUserEmail(this) ?: ""
                 val presetService = intent.getStringExtra(EXTRA_PRESET_SERVICE).orEmpty()
+                val preferredWorkerName = intent.getStringExtra(EXTRA_PREFERRED_WORKER_NAME).orEmpty()
                 UserCreateJobScreen(
                     userEmail = email,
                     presetService = presetService,
+                    preferredWorkerName = preferredWorkerName,
                     onBackClick = { finish() },
                     onSubmit = { service, description, _, location ->
                         val jobs = AppStorage.loadUserJobs(this)
@@ -128,6 +130,7 @@ class UserCreateJobActivity : ComponentActivity() {
 private fun UserCreateJobScreen(
     userEmail: String,
     presetService: String,
+    preferredWorkerName: String,
     onBackClick: () -> Unit,
     onSubmit: (
         service: String,
@@ -210,6 +213,11 @@ private fun UserCreateJobScreen(
 
                         errorMessage = null
                         val fullDescription = buildString {
+                            if (preferredWorkerName.isNotBlank()) {
+                                append("Preferred Worker: ")
+                                append(preferredWorkerName.trim())
+                                append("\n")
+                            }
                             append("Time: ")
                             append(t)
                             append("\nLocation: ")
@@ -252,6 +260,20 @@ private fun UserCreateJobScreen(
             )
 
             Spacer(modifier = Modifier.height(10.dp))
+
+            if (preferredWorkerName.isNotBlank()) {
+                OutlinedTextField(
+                    value = preferredWorkerName,
+                    onValueChange = { },
+                    readOnly = true,
+                    singleLine = true,
+                    label = { Text(text = "Preferred Worker") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
             Box(
                 modifier = Modifier

@@ -29,15 +29,21 @@
         <activity android:name=".admin.AdminWorkerManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminRevenueActivity" android:exported="false" />
+        <activity android:name=".admin.AdminBroadcastActivity" android:exported="false" />
+        <activity android:name=".admin.AdminTransactionDetailsActivity" android:exported="false" />
 
         <activity android:name=".user.UserHomeActivity" android:exported="false" />
         <activity android:name=".user.UserCategoriesActivity" android:exported="false" />
         <activity android:name=".user.UserCreateJobActivity" android:exported="false" />
+        <activity android:name=".user.UserJobDetailsActivity" android:exported="false" />
         <activity android:name=".user.UserJobsActivity" android:exported="false" />
         <activity android:name=".user.UserPaymentActivity" android:exported="false" />
         <activity android:name=".user.UserNotificationsActivity" android:exported="false" />
         <activity android:name=".user.UserSignUpActivity" android:exported="false" />
         <activity android:name=".user.UserRateServiceActivity" android:exported="false" />
+        <activity android:name=".user.UserWorkersActivity" android:exported="false" />
+        <activity android:name=".user.UserWorkerDetailsActivity" android:exported="false" />
+        <activity android:name=".user.UserSupportActivity" android:exported="false" />
         <activity android:name=".user.UserProfileActivity" android:exported="false" />
 
         <activity android:name=".worker.WorkerDashboardActivity" android:exported="false" />
@@ -45,6 +51,9 @@
         <activity android:name=".worker.WorkerProfileActivity" android:exported="false" />
         <activity android:name=".worker.WorkerEarningsActivity" android:exported="false" />
         <activity android:name=".worker.WorkerNotificationsActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerJobDetailsActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerAvailabilityActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerPayoutSettingsActivity" android:exported="false" />
 
     </application>
 

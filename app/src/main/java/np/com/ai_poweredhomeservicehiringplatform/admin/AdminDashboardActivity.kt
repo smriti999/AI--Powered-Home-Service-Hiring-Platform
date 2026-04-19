@@ -17,11 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -64,6 +65,7 @@ class AdminDashboardActivity : ComponentActivity() {
                     onUsersClick = { startActivity(Intent(this, AdminUserManagementActivity::class.java)) },
                     onWorksClick = { startActivity(Intent(this, AdminWorkManagementActivity::class.java)) },
                     onRevenueClick = { startActivity(Intent(this, AdminRevenueActivity::class.java)) },
+                    onBroadcastClick = { startActivity(Intent(this, AdminBroadcastActivity::class.java)) },
                     onLogoutClick = {
                         AppStorage.setAdminLoggedIn(this, false)
                         startActivity(Intent(this, LoginActivity::class.java))
@@ -83,6 +85,7 @@ private fun AdminDashboardScreen(
     onUsersClick: () -> Unit,
     onWorksClick: () -> Unit,
     onRevenueClick: () -> Unit,
+    onBroadcastClick: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -102,9 +105,10 @@ private fun AdminDashboardScreen(
         NavigationItem("Requests", Icons.Default.PendingActions, onRequestsClick),
         NavigationItem("Workers", Icons.Default.Group, onWorkersClick),
         NavigationItem("Users", Icons.Default.Group, onUsersClick),
-        NavigationItem("Works", Icons.Default.List, onWorksClick),
+        NavigationItem("Works", Icons.AutoMirrored.Filled.List, onWorksClick),
         NavigationItem("Revenue", Icons.Default.MonetizationOn, onRevenueClick),
-        NavigationItem("Logout", Icons.Default.ExitToApp, onLogoutClick)
+        NavigationItem("Broadcast", Icons.Default.Campaign, onBroadcastClick),
+        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, onLogoutClick)
     )
 
     AppDrawer(drawerState = drawerState, items = navItems) {
@@ -117,22 +121,6 @@ private fun AdminDashboardScreen(
                         BurgerMenuIcon(drawerState = drawerState)
                     }
                 )
-            },
-            bottomBar = {
-                Button(
-                    onClick = onLogoutClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(54.dp),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        text = "LOGOUT",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         ) { innerPadding ->
             Column(
@@ -253,4 +241,3 @@ private fun AdminDashboardScreen(
     }
 }
 }
-

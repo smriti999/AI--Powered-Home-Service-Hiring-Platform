@@ -66,6 +66,11 @@ class UserJobsActivity : ComponentActivity() {
                 val email = AppStorage.currentUserEmail(this) ?: ""
                 UserJobsScreen(
                     userEmail = email,
+                    onOpenDetails = { workId ->
+                        val intent = Intent(this, UserJobDetailsActivity::class.java)
+                        intent.putExtra(EXTRA_JOB_DETAIL_WORK_ID, workId)
+                        startActivity(intent)
+                    },
                     onPayClick = { workId, amount ->
                         val intent = Intent(this, UserPaymentActivity::class.java)
                         intent.putExtra(EXTRA_WORK_ID, workId)
@@ -104,6 +109,7 @@ private fun extractTime(detail: String): String? {
 @Composable
 private fun UserJobsScreen(
     userEmail: String,
+    onOpenDetails: (workId: Int) -> Unit,
     onPayClick: (workId: Int, amountNpr: Int) -> Unit,
     onRateClick: (workId: Int, workerName: String, profession: String) -> Unit,
     onBackClick: () -> Unit
@@ -215,7 +221,10 @@ private fun UserJobsScreen(
                     val payment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
                     val isPaid = payment?.status == PaymentStatus.Paid
 
-                    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onOpenDetails(work.id) }
+                    ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

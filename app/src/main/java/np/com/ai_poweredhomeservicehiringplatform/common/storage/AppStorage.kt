@@ -1,6 +1,7 @@
 package np.com.ai_poweredhomeservicehiringplatform.common.storage
 
 import android.content.Context
+import androidx.room.Room
 import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentMethod
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
@@ -12,6 +13,7 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerApplicationStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerApplicationUiModel
+import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerSettingsUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.sha256Hex
 import org.json.JSONArray
@@ -31,6 +33,7 @@ object AppStorage {
     private const val KEY_NOTIFICATIONS_JSON = "notifications_json"
     private const val KEY_PAYMENTS_JSON = "payments_json"
     private const val KEY_RATINGS_JSON = "ratings_json"
+    private const val KEY_WORKER_SETTINGS_JSON = "worker_settings_json"
 
     private const val KEY_ADMIN_LOGGED_IN = "admin_logged_in"
     private const val KEY_USER_LOGGED_IN = "user_logged_in"
@@ -39,6 +42,26 @@ object AppStorage {
     private const val KEY_CURRENT_WORKER_EMAIL = "current_worker_email"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    @Volatile
+    private var dbInstance: AppDatabase? = null
+
+    private fun db(context: Context): AppDatabase {
+        val existing = dbInstance
+        if (existing != null) return existing
+        val created = Room.databaseBuilder(
+            context.applicationContext,
+            AppDatabase::class.java,
+            "aiphs.db"
+        )
+            .fallbackToDestructiveMigration()
+            .allowMainThreadQueries()
+            .build()
+        dbInstance = created
+        return created
+    }
+
+    private fun dao(context: Context): AppDao = db(context).dao()
 
     fun seedAdminIfNeeded(context: Context) {
         val p = prefs(context)
@@ -98,336 +121,151 @@ object AppStorage {
     }
 
     fun loadUsers(context: Context): List<UserUiModel> {
-        val raw = prefs(context).getString(KEY_USERS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<UserUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            result.add(
-                UserUiModel(
-                    id = obj.optInt("id", 0),
-                    name = obj.optString("name", ""),
-                    status = obj.optString("status", "Active"),
-                    email = obj.optString("email", ""),
-                    phoneNumber = obj.optString("phoneNumber", ""),
-                    location = obj.optString("location", ""),
-                    streetHomeNumber = obj.optString("streetHomeNumber", ""),
-                    alternativeLocation = obj.optString("alternativeLocation", ""),
-                    passwordHash = obj.optString("passwordHash", "")
-                )
-            )
-        }
-        return result
+        return dao(context).getUsers()
     }
 
     fun saveUsers(context: Context, users: List<UserUiModel>) {
-        val arr = JSONArray()
-        users.forEach { user ->
-            val obj = JSONObject()
-            obj.put("id", user.id)
-            obj.put("name", user.name)
-            obj.put("status", user.status)
-            obj.put("email", user.email)
-            obj.put("phoneNumber", user.phoneNumber)
-            obj.put("location", user.location)
-            obj.put("streetHomeNumber", user.streetHomeNumber)
-            obj.put("alternativeLocation", user.alternativeLocation)
-            obj.put("passwordHash", user.passwordHash)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_USERS_JSON, arr.toString()).apply()
+        dao(context).replaceUsers(users)
     }
 
     fun loadWorks(context: Context): List<WorkUiModel> {
-        val raw = prefs(context).getString(KEY_WORKS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<WorkUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val status = runCatching { WorkStatus.valueOf(obj.optString("status", WorkStatus.Pending.name)) }
-                .getOrElse { WorkStatus.Pending }
-            result.add(
-                WorkUiModel(
-                    id = obj.optInt("id", 0),
-                    workName = obj.optString("workName", ""),
-                    detail = obj.optString("detail", ""),
-                    workerName = if (obj.has("workerName") && !obj.isNull("workerName")) obj.optString("workerName") else null,
-                    status = status
-                )
-            )
-        }
-        return result
+        return dao(context).getWorks()
     }
 
     fun saveWorks(context: Context, works: List<WorkUiModel>) {
-        val arr = JSONArray()
-        works.forEach { work ->
-            val obj = JSONObject()
-            obj.put("id", work.id)
-            obj.put("workName", work.workName)
-            obj.put("detail", work.detail)
-            obj.put("workerName", work.workerName)
-            obj.put("status", work.status.name)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_WORKS_JSON, arr.toString()).apply()
+        dao(context).replaceWorks(works)
     }
 
     fun loadUserJobs(context: Context): List<UserJobUiModel> {
-        val raw = prefs(context).getString(KEY_USER_JOBS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<UserJobUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val status = runCatching { WorkStatus.valueOf(obj.optString("status", WorkStatus.Pending.name)) }
-                .getOrElse { WorkStatus.Pending }
-            result.add(
-                UserJobUiModel(
-                    id = obj.optInt("id", 0),
-                    userEmail = obj.optString("userEmail", ""),
-                    service = obj.optString("service", ""),
-                    description = obj.optString("description", ""),
-                    location = obj.optString("location", ""),
-                    streetHomeNumber = obj.optString("streetHomeNumber", ""),
-                    alternativeLocation = obj.optString("alternativeLocation", ""),
-                    status = status
-                )
-            )
-        }
-        return result
+        return dao(context).getUserJobs()
     }
 
     fun saveUserJobs(context: Context, jobs: List<UserJobUiModel>) {
-        val arr = JSONArray()
-        jobs.forEach { job ->
-            val obj = JSONObject()
-            obj.put("id", job.id)
-            obj.put("userEmail", job.userEmail)
-            obj.put("service", job.service)
-            obj.put("description", job.description)
-            obj.put("location", job.location)
-            obj.put("streetHomeNumber", job.streetHomeNumber)
-            obj.put("alternativeLocation", job.alternativeLocation)
-            obj.put("status", job.status.name)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_USER_JOBS_JSON, arr.toString()).apply()
+        dao(context).replaceUserJobs(jobs)
     }
 
     fun loadNotifications(context: Context): List<NotificationUiModel> {
-        val raw = prefs(context).getString(KEY_NOTIFICATIONS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<NotificationUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            result.add(
-                NotificationUiModel(
-                    id = obj.optInt("id", 0),
-                    userEmail = obj.optString("userEmail", ""),
-                    title = obj.optString("title", ""),
-                    message = obj.optString("message", ""),
-                    timestampMillis = obj.optLong("timestampMillis", 0L)
-                )
-            )
-        }
-        return result
+        return dao(context).getNotifications()
     }
 
     fun saveNotifications(context: Context, notifications: List<NotificationUiModel>) {
-        val arr = JSONArray()
-        notifications.forEach { n ->
-            val obj = JSONObject()
-            obj.put("id", n.id)
-            obj.put("userEmail", n.userEmail)
-            obj.put("title", n.title)
-            obj.put("message", n.message)
-            obj.put("timestampMillis", n.timestampMillis)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_NOTIFICATIONS_JSON, arr.toString()).apply()
+        dao(context).replaceNotifications(notifications)
     }
 
     fun loadPayments(context: Context): List<PaymentUiModel> {
-        val raw = prefs(context).getString(KEY_PAYMENTS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<PaymentUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val status = runCatching { PaymentStatus.valueOf(obj.optString("status", PaymentStatus.Pending.name)) }
-                .getOrElse { PaymentStatus.Pending }
-            val method = runCatching {
-                val rawMethod = obj.optString("method", "")
-                if (rawMethod.isBlank()) null else PaymentMethod.valueOf(rawMethod)
-            }.getOrNull()
-            result.add(
-                PaymentUiModel(
-                    id = obj.optInt("id", 0),
-                    workId = obj.optInt("workId", 0),
-                    userEmail = obj.optString("userEmail", ""),
-                    amountNpr = obj.optInt("amountNpr", 0),
-                    method = method,
-                    status = status,
-                    timestampMillis = obj.optLong("timestampMillis", 0L)
-                )
-            )
-        }
-        return result
+        return dao(context).getPayments()
     }
 
     fun savePayments(context: Context, payments: List<PaymentUiModel>) {
-        val arr = JSONArray()
-        payments.forEach { p ->
-            val obj = JSONObject()
-            obj.put("id", p.id)
-            obj.put("workId", p.workId)
-            obj.put("userEmail", p.userEmail)
-            obj.put("amountNpr", p.amountNpr)
-            obj.put("method", p.method?.name ?: "")
-            obj.put("status", p.status.name)
-            obj.put("timestampMillis", p.timestampMillis)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_PAYMENTS_JSON, arr.toString()).apply()
+        dao(context).replacePayments(payments)
     }
 
     fun loadRatings(context: Context): List<RatingUiModel> {
-        val raw = prefs(context).getString(KEY_RATINGS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<RatingUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            result.add(
-                RatingUiModel(
-                    id = obj.optInt("id", 0),
-                    workId = obj.optInt("workId", 0),
-                    userEmail = obj.optString("userEmail", ""),
-                    workerName = obj.optString("workerName", ""),
-                    profession = obj.optString("profession", ""),
-                    stars = obj.optInt("stars", 0),
-                    review = obj.optString("review", ""),
-                    timestampMillis = obj.optLong("timestampMillis", 0L)
-                )
-            )
-        }
-        return result
+        return dao(context).getRatings()
     }
 
     fun saveRatings(context: Context, ratings: List<RatingUiModel>) {
-        val arr = JSONArray()
-        ratings.forEach { r ->
-            val obj = JSONObject()
-            obj.put("id", r.id)
-            obj.put("workId", r.workId)
-            obj.put("userEmail", r.userEmail)
-            obj.put("workerName", r.workerName)
-            obj.put("profession", r.profession)
-            obj.put("stars", r.stars)
-            obj.put("review", r.review)
-            obj.put("timestampMillis", r.timestampMillis)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_RATINGS_JSON, arr.toString()).apply()
+        dao(context).replaceRatings(ratings)
     }
 
     fun loadWorkerApplications(context: Context): List<WorkerApplicationUiModel> {
-        val raw = prefs(context).getString(KEY_WORKER_APPLICATIONS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<WorkerApplicationUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            val status = runCatching { WorkerApplicationStatus.valueOf(obj.optString("status", WorkerApplicationStatus.Pending.name)) }
-                .getOrElse { WorkerApplicationStatus.Pending }
-            result.add(
-                WorkerApplicationUiModel(
-                    id = obj.optInt("id", 0),
-                    name = obj.optString("name", ""),
-                    email = obj.optString("email", ""),
-                    phoneNumber = obj.optString("phoneNumber", ""),
-                    location = obj.optString("location", ""),
-                    streetHomeNumber = obj.optString("streetHomeNumber", ""),
-                    alternativeLocation = obj.optString("alternativeLocation", ""),
-                    gender = obj.optString("gender", ""),
-                    profession = obj.optString("profession", ""),
-                    experienceYears = obj.optString("experienceYears", ""),
-                    passwordHash = obj.optString("passwordHash", ""),
-                    cvUri = if (obj.has("cvUri") && !obj.isNull("cvUri")) obj.optString("cvUri") else null,
-                    cvFileName = if (obj.has("cvFileName") && !obj.isNull("cvFileName")) obj.optString("cvFileName") else null,
-                    cvSizeBytes = if (obj.has("cvSizeBytes") && !obj.isNull("cvSizeBytes")) obj.optLong("cvSizeBytes") else null,
-                    status = status
-                )
-            )
-        }
-        return result
+        return dao(context).getWorkerApplications()
     }
 
     fun saveWorkerApplications(context: Context, applications: List<WorkerApplicationUiModel>) {
-        val arr = JSONArray()
-        applications.forEach { app ->
-            val obj = JSONObject()
-            obj.put("id", app.id)
-            obj.put("name", app.name)
-            obj.put("email", app.email)
-            obj.put("phoneNumber", app.phoneNumber)
-            obj.put("location", app.location)
-            obj.put("streetHomeNumber", app.streetHomeNumber)
-            obj.put("alternativeLocation", app.alternativeLocation)
-            obj.put("gender", app.gender)
-            obj.put("profession", app.profession)
-            obj.put("experienceYears", app.experienceYears)
-            obj.put("passwordHash", app.passwordHash)
-            obj.put("cvUri", app.cvUri)
-            obj.put("cvFileName", app.cvFileName)
-            obj.put("cvSizeBytes", app.cvSizeBytes)
-            obj.put("status", app.status.name)
-            arr.put(obj)
-        }
-        prefs(context).edit().putString(KEY_WORKER_APPLICATIONS_JSON, arr.toString()).apply()
+        dao(context).replaceWorkerApplications(applications)
     }
 
     fun loadWorkers(context: Context): List<WorkerUiModel> {
-        val raw = prefs(context).getString(KEY_WORKERS_JSON, "[]") ?: "[]"
-        val arr = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
-        val result = ArrayList<WorkerUiModel>(arr.length())
-        for (i in 0 until arr.length()) {
-            val obj = arr.optJSONObject(i) ?: continue
-            result.add(
-                WorkerUiModel(
-                    id = obj.optInt("id", 0),
-                    name = obj.optString("name", ""),
-                    status = obj.optString("status", "Active"),
-                    email = obj.optString("email", ""),
-                    phoneNumber = obj.optString("phoneNumber", ""),
-                    location = obj.optString("location", ""),
-                    streetHomeNumber = obj.optString("streetHomeNumber", ""),
-                    alternativeLocation = obj.optString("alternativeLocation", ""),
-                    gender = obj.optString("gender", ""),
-                    profession = obj.optString("profession", ""),
-                    experienceYears = obj.optString("experienceYears", ""),
-                    passwordHash = obj.optString("passwordHash", "")
-                )
+        return dao(context).getWorkers()
+    }
+
+    fun saveWorkers(context: Context, workers: List<WorkerUiModel>) {
+        dao(context).replaceWorkers(workers)
+    }
+
+    fun loadWorkerAvailability(context: Context, workerEmail: String): Boolean {
+        if (workerEmail.isBlank()) return true
+        return dao(context).getWorkerSettings(workerEmail.lowercase())?.available ?: true
+    }
+
+    fun saveWorkerAvailability(context: Context, workerEmail: String, available: Boolean) {
+        if (workerEmail.isBlank()) return
+        val key = workerEmail.lowercase()
+        val existing = dao(context).getWorkerSettings(key)
+        val updated = if (existing == null) {
+            WorkerSettingsUiModel(
+                workerEmail = key,
+                available = available,
+                serviceAreasJson = "[]",
+                payoutMethod = null,
+                payoutAccount = ""
             )
+        } else {
+            existing.copy(available = available)
+        }
+        dao(context).upsertWorkerSettings(updated)
+    }
+
+    fun loadWorkerServiceAreas(context: Context, workerEmail: String): List<String> {
+        if (workerEmail.isBlank()) return emptyList()
+        val settings = dao(context).getWorkerSettings(workerEmail.lowercase()) ?: return emptyList()
+        val arr = runCatching { JSONArray(settings.serviceAreasJson) }.getOrElse { JSONArray() }
+        val result = ArrayList<String>(arr.length())
+        for (i in 0 until arr.length()) {
+            val v = arr.optString(i, "").trim()
+            if (v.isNotBlank()) result.add(v)
         }
         return result
     }
 
-    fun saveWorkers(context: Context, workers: List<WorkerUiModel>) {
+    fun saveWorkerServiceAreas(context: Context, workerEmail: String, areas: List<String>) {
         val arr = JSONArray()
-        workers.forEach { worker ->
-            val obj = JSONObject()
-            obj.put("id", worker.id)
-            obj.put("name", worker.name)
-            obj.put("status", worker.status)
-            obj.put("email", worker.email)
-            obj.put("phoneNumber", worker.phoneNumber)
-            obj.put("location", worker.location)
-            obj.put("streetHomeNumber", worker.streetHomeNumber)
-            obj.put("alternativeLocation", worker.alternativeLocation)
-            obj.put("gender", worker.gender)
-            obj.put("profession", worker.profession)
-            obj.put("experienceYears", worker.experienceYears)
-            obj.put("passwordHash", worker.passwordHash)
-            arr.put(obj)
+        areas.distinct().forEach { a ->
+            val v = a.trim()
+            if (v.isNotBlank()) arr.put(v)
         }
-        prefs(context).edit().putString(KEY_WORKERS_JSON, arr.toString()).apply()
+        val key = workerEmail.lowercase()
+        val existing = dao(context).getWorkerSettings(key)
+        val updated = if (existing == null) {
+            WorkerSettingsUiModel(
+                workerEmail = key,
+                available = true,
+                serviceAreasJson = arr.toString(),
+                payoutMethod = null,
+                payoutAccount = ""
+            )
+        } else {
+            existing.copy(serviceAreasJson = arr.toString())
+        }
+        dao(context).upsertWorkerSettings(updated)
+    }
+
+    fun loadWorkerPayoutMethod(context: Context, workerEmail: String): PaymentMethod? {
+        if (workerEmail.isBlank()) return null
+        return dao(context).getWorkerSettings(workerEmail.lowercase())?.payoutMethod
+    }
+
+    fun loadWorkerPayoutAccount(context: Context, workerEmail: String): String {
+        if (workerEmail.isBlank()) return ""
+        return dao(context).getWorkerSettings(workerEmail.lowercase())?.payoutAccount.orEmpty()
+    }
+
+    fun saveWorkerPayoutSettings(context: Context, workerEmail: String, method: PaymentMethod?, account: String) {
+        if (workerEmail.isBlank()) return
+        val key = workerEmail.lowercase()
+        val existing = dao(context).getWorkerSettings(key)
+        val updated = if (existing == null) {
+            WorkerSettingsUiModel(
+                workerEmail = key,
+                available = true,
+                serviceAreasJson = "[]",
+                payoutMethod = method,
+                payoutAccount = account.trim()
+            )
+        } else {
+            existing.copy(payoutMethod = method, payoutAccount = account.trim())
+        }
+        dao(context).upsertWorkerSettings(updated)
     }
 }

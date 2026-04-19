@@ -17,12 +17,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -103,11 +104,14 @@ private fun AdminWorkerManagementScreen(
         NavigationItem("Requests", Icons.Default.PendingActions, onRequestsClick),
         NavigationItem("Workers", Icons.Default.Group, { }),
         NavigationItem("Users", Icons.Default.Group, onUsersClick),
-        NavigationItem("Works", Icons.Default.List, onWorksClick),
+        NavigationItem("Works", Icons.AutoMirrored.Filled.List, onWorksClick),
         NavigationItem("Revenue", Icons.Default.MonetizationOn, {
             context.startActivity(Intent(context, AdminRevenueActivity::class.java))
         }),
-        NavigationItem("Logout", Icons.Default.ExitToApp, {
+        NavigationItem("Broadcast", Icons.Default.Campaign, {
+            context.startActivity(Intent(context, AdminBroadcastActivity::class.java))
+        }),
+        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, {
             AppStorage.setAdminLoggedIn(context, false)
             context.startActivity(Intent(context, LoginActivity::class.java))
             (context as? ComponentActivity)?.finish()

@@ -16,12 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,11 +91,14 @@ private fun AdminRevenueScreen() {
         NavigationItem("Users", Icons.Default.Group, {
             context.startActivity(Intent(context, AdminUserManagementActivity::class.java))
         }),
-        NavigationItem("Works", Icons.Default.List, {
+        NavigationItem("Works", Icons.AutoMirrored.Filled.List, {
             context.startActivity(Intent(context, AdminWorkManagementActivity::class.java))
         }),
         NavigationItem("Revenue", Icons.Default.MonetizationOn, { }),
-        NavigationItem("Logout", Icons.Default.ExitToApp, {
+        NavigationItem("Broadcast", Icons.Default.Campaign, {
+            context.startActivity(Intent(context, AdminBroadcastActivity::class.java))
+        }),
+        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, {
             AppStorage.setAdminLoggedIn(context, false)
             context.startActivity(Intent(context, LoginActivity::class.java))
             (context as? ComponentActivity)?.finish()
@@ -169,6 +173,7 @@ private fun AdminRevenueScreen() {
                 } else {
                     paidPayments.sortedByDescending { it.timestampMillis }.forEach { payment ->
                         TransactionItem(
+                            paymentId = payment.id,
                             userEmail = payment.userEmail,
                             amount = payment.amountNpr,
                             method = payment.method?.name ?: "Unknown",
@@ -183,12 +188,20 @@ private fun AdminRevenueScreen() {
 }
 
 @Composable
-private fun TransactionItem(userEmail: String, amount: Int, method: String, timestamp: Long) {
+private fun TransactionItem(paymentId: Int, userEmail: String, amount: Int, method: String, timestamp: Long) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val date = Date(timestamp)
     val sdf = SimpleDateFormat("MMM dd, yyyy - hh:mm a", Locale.getDefault())
     val formattedDate = sdf.format(date)
 
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = {
+            val intent = Intent(context, AdminTransactionDetailsActivity::class.java)
+            intent.putExtra(EXTRA_PAYMENT_ID, paymentId)
+            context.startActivity(intent)
+        }
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
