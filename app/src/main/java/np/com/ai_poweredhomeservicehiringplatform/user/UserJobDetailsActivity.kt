@@ -209,6 +209,13 @@ private fun UserJobDetailsScreen(
             if (work.status == WorkStatus.Completed) {
                 val payment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
                 val isPaid = payment?.status == PaymentStatus.Paid
+                val amount = payment?.amountNpr ?: 0
+
+                Spacer(modifier = Modifier.height(10.dp))
+                InfoRow(
+                    label = "Final Amount",
+                    value = if (amount > 0) "Rs. $amount" else "To be decided"
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -290,4 +297,3 @@ private fun InfoRow(label: String, value: String) {
         Spacer(modifier = Modifier.height(10.dp))
     }
 }
-

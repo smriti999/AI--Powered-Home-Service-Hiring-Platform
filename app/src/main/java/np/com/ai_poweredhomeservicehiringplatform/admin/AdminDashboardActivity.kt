@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Button
@@ -107,6 +108,9 @@ private fun AdminDashboardScreen(
         NavigationItem("Users", Icons.Default.Group, onUsersClick),
         NavigationItem("Works", Icons.AutoMirrored.Filled.List, onWorksClick),
         NavigationItem("Revenue", Icons.Default.MonetizationOn, onRevenueClick),
+        NavigationItem("ML Model", Icons.Default.Psychology, {
+            context.startActivity(Intent(context, AdminMlModelReportActivity::class.java))
+        }),
         NavigationItem("Broadcast", Icons.Default.Campaign, onBroadcastClick),
         NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, onLogoutClick)
     )

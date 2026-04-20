@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.CardDefaults
@@ -30,9 +31,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -76,6 +81,8 @@ private fun AdminRevenueScreen() {
     val payments = remember { AppStorage.loadPayments(context) }
     val paidPayments = payments.filter { it.status == PaymentStatus.Paid }
     val totalRevenue = paidPayments.sumOf { it.amountNpr }
+    var trainMessage by remember { mutableStateOf<String?>(null) }
+    val modelReport = remember(trainMessage) { AppStorage.getPriceModelReport(context) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val navItems = listOf(
@@ -97,6 +104,9 @@ private fun AdminRevenueScreen() {
         NavigationItem("Revenue", Icons.Default.MonetizationOn, { }),
         NavigationItem("Broadcast", Icons.Default.Campaign, {
             context.startActivity(Intent(context, AdminBroadcastActivity::class.java))
+        }),
+        NavigationItem("ML Model", Icons.Default.Psychology, {
+            context.startActivity(Intent(context, AdminMlModelReportActivity::class.java))
         }),
         NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, {
             AppStorage.setAdminLoggedIn(context, false)
@@ -150,6 +160,66 @@ private fun AdminRevenueScreen() {
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "ML Training Proof (Price Model)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (modelReport == null) {
+                                "Model not trained yet."
+                            } else {
+                                "Samples: ${modelReport.sampleCount} | RMSE: ${"%.2f".format(modelReport.rmse)} | MAE: ${"%.2f".format(modelReport.mae)}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        if (modelReport != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Tap ML Model to see full weights report.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        if (!trainMessage.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = trainMessage.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        TextButton(
+                            onClick = {
+                                val report = AppStorage.trainPriceModel(context)
+                                trainMessage = if (report == null) {
+                                    "Training failed: not enough paid data."
+                                } else {
+                                    "Training completed. Samples=${report.sampleCount}, RMSE=${"%.2f".format(report.rmse)}, MAE=${"%.2f".format(report.mae)}"
+                                }
+                            }
+                        ) {
+                            Text(text = "Train / Retrain Model")
+                        }
+                        TextButton(
+                            onClick = {
+                                context.startActivity(Intent(context, AdminMlModelReportActivity::class.java))
+                            }
+                        ) {
+                            Text(text = "Open Full Model Report")
+                        }
                     }
                 }
 

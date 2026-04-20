@@ -50,13 +50,21 @@ import np.com.ai_poweredhomeservicehiringplatform.common.sha256Hex
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
+import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
+import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.user.UserHomeActivity
+import np.com.ai_poweredhomeservicehiringplatform.user.UserJobDetailsActivity
+import np.com.ai_poweredhomeservicehiringplatform.user.EXTRA_JOB_DETAIL_WORK_ID
 import np.com.ai_poweredhomeservicehiringplatform.worker.WorkerDashboardActivity
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppStorage.seedAdminIfNeeded(this)
+        val appContext = applicationContext
+        Thread {
+            runCatching { AppStorage.seedDatasetFromAssetsIfNeeded(appContext) }
+        }.start()
         enableEdgeToEdge()
 
         if (AppStorage.isAdminLoggedIn(this)) {
@@ -87,7 +95,31 @@ class LoginActivity : ComponentActivity() {
                     },
                     onUserLoginSuccess = { email ->
                         AppStorage.setUserLoggedIn(this, true, email)
-                        startActivity(Intent(this, UserHomeActivity::class.java))
+                        val works = AppStorage.loadWorks(this)
+                        val payments = AppStorage.loadPayments(this)
+                        val ratings = AppStorage.loadRatings(this)
+                        val pendingCompleted = works
+                            .filter { it.status == WorkStatus.Completed }
+                            .firstOrNull { w ->
+                                val detailEmail = w.detail.lineSequence()
+                                    .firstOrNull { it.trim().startsWith("User:", ignoreCase = true) }
+                                    ?.substringAfter(":")
+                                    ?.trim()
+                                    .orEmpty()
+                                if (!detailEmail.equals(email, ignoreCase = true)) return@firstOrNull false
+                                val payment = payments.firstOrNull { p -> p.workId == w.id && p.userEmail.equals(email, ignoreCase = true) }
+                                val isPaid = payment?.status == PaymentStatus.Paid
+                                val isRated = ratings.any { r -> r.workId == w.id && r.userEmail.equals(email, ignoreCase = true) }
+                                (!isPaid) || (!isRated)
+                            }
+
+                        if (pendingCompleted != null) {
+                            val i = Intent(this, UserJobDetailsActivity::class.java)
+                            i.putExtra(EXTRA_JOB_DETAIL_WORK_ID, pendingCompleted.id)
+                            startActivity(i)
+                        } else {
+                            startActivity(Intent(this, UserHomeActivity::class.java))
+                        }
                         finish()
                     },
                     onWorkerLoginSuccess = { email ->

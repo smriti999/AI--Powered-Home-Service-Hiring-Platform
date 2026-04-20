@@ -182,6 +182,9 @@ interface AppDao {
     @Query("SELECT * FROM worker_settings")
     fun getAllWorkerSettings(): List<WorkerSettingsUiModel>
 
+    @Query("DELETE FROM worker_settings")
+    fun clearWorkerSettings()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsertWorkerSettings(settings: WorkerSettingsUiModel)
 }

@@ -29,6 +29,7 @@
         <activity android:name=".admin.AdminWorkerManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminRevenueActivity" android:exported="false" />
+        <activity android:name=".admin.AdminMlModelReportActivity" android:exported="false" />
         <activity android:name=".admin.AdminBroadcastActivity" android:exported="false" />
         <activity android:name=".admin.AdminTransactionDetailsActivity" android:exported="false" />
 

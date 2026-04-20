@@ -132,7 +132,7 @@ private fun PaymentScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "To be decided",
+                    text = if (amountNpr > 0) "Rs. $amountNpr" else "To be decided",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )

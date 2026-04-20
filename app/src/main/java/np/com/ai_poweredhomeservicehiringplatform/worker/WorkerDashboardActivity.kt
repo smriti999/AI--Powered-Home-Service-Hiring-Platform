@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
@@ -123,6 +125,13 @@ private fun extractUserEmail(detail: String): String? {
     return userLine.substringAfter(":").trim().takeIf { it.isNotBlank() }
 }
 
+private fun formatDuration(durationMillis: Long): String {
+    val totalSeconds = (durationMillis.coerceAtLeast(0L) / 1000L).toInt()
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WorkerDashboardScreen(
@@ -144,6 +153,14 @@ private fun WorkerDashboardScreen(
     val workerName = currentWorker?.name ?: "Worker"
 
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
+    var tickerNow by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            tickerNow = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
 
     val availableWorks = works.filter { work ->
         work.status == WorkStatus.Pending &&
@@ -272,6 +289,17 @@ private fun WorkerDashboardScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
+                                        val startedAt = AppStorage.getWorkTimerStartMillis(context, work.id)
+                                        if (startedAt != null) {
+                                            Spacer(modifier = Modifier.padding(top = 8.dp))
+                                            Text(
+                                                text = "Elapsed: ${formatDuration(tickerNow - startedAt)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
                                         Spacer(modifier = Modifier.padding(top = 10.dp))
 
                                         Row(
@@ -283,6 +311,9 @@ private fun WorkerDashboardScreen(
                                                 onClick = {
                                                     val userEmail = extractUserEmail(work.detail)
                                                     if (userEmail != null) {
+                                                        if (AppStorage.getWorkTimerStartMillis(context, work.id) == null) {
+                                                            AppStorage.startWorkTimer(context, work.id)
+                                                        }
                                                         val notifications = AppStorage.loadNotifications(context)
                                                         var nextId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
                                                         
@@ -291,7 +322,7 @@ private fun WorkerDashboardScreen(
                                                             id = nextId++,
                                                             userEmail = userEmail,
                                                             title = "Worker Arrived",
-                                                            message = "$workerName has arrived at your location.",
+                                                            message = "$workerName has arrived and started the work.",
                                                             timestampMillis = System.currentTimeMillis()
                                                         )
                                                         
@@ -306,6 +337,11 @@ private fun WorkerDashboardScreen(
                                                         
                                                         AppStorage.saveNotifications(context, notifications + n1 + n2)
                                                     }
+
+                                                    val intent = Intent(context, WorkerJobDetailsActivity::class.java)
+                                                    intent.putExtra(EXTRA_WORK_DETAIL_ID, work.id)
+                                                    intent.putExtra(EXTRA_OPEN_TIMER, true)
+                                                    context.startActivity(intent)
                                                 },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = Color(0xFF2E7D32),
