@@ -47,6 +47,8 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 const val EXTRA_WORK_DETAIL_ID = "extra_work_detail_id"
@@ -117,6 +119,7 @@ private fun WorkerJobDetailsScreen(
     val workers = remember { AppStorage.loadWorkers(context) }
     val currentWorker = workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }
     val workerName = currentWorker?.name ?: "Worker"
+    val notificationCount = rememberUnreadNotificationCount(workerEmail)
 
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
     val work = works.firstOrNull { it.id == workId }
@@ -174,6 +177,12 @@ private fun WorkerJobDetailsScreen(
                             tint = Color.White
                         )
                     }
+                },
+                actions = {
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, WorkerNotificationsActivity::class.java)) }
+                    )
                 }
             )
         }

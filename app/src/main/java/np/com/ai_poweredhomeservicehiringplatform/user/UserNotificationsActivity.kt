@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +66,11 @@ private fun UserNotificationsScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val userEmail = AppStorage.currentUserEmail(context).orEmpty()
+
+    LaunchedEffect(userEmail) {
+        AppStorage.markNotificationsSeen(context, userEmail)
+    }
+
     val notifications = remember { AppStorage.loadNotifications(context) }
         .filter { it.userEmail.equals(userEmail, ignoreCase = true) }
         .sortedByDescending { it.timestampMillis }
@@ -127,4 +133,3 @@ private fun UserNotificationsScreen(
         }
     }
 }
-

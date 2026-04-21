@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class UserProfileActivity : ComponentActivity() {
@@ -81,6 +83,7 @@ private fun UserProfileScreen(onBack: () -> Unit) {
     val email = AppStorage.currentUserEmail(context).orEmpty()
     val users = AppStorage.loadUsers(context)
     val user = users.find { it.email.equals(email, ignoreCase = true) }
+    val notificationCount = rememberUnreadNotificationCount(email)
 
     var isEditMode by remember { mutableStateOf(false) }
 
@@ -105,6 +108,10 @@ private fun UserProfileScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                    )
                     if (!isEditMode) {
                         IconButton(onClick = { isEditMode = true }) {
                             Icon(

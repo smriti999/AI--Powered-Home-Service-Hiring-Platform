@@ -38,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +50,8 @@ import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class UserHomeActivity : ComponentActivity() {
@@ -106,6 +109,8 @@ private fun UserHomeScreen(
     onCategoryClick: (String) -> Unit,
     onLogoutClick: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val notificationCount = rememberUnreadNotificationCount(userEmail)
     val categories = listOf(
         "Plumbing Services",
         "Cleaning Services",
@@ -131,6 +136,9 @@ private fun UserHomeScreen(
                     title = "Home",
                     navigationIcon = {
                         BurgerMenuIcon(drawerState = drawerState)
+                    },
+                    actions = {
+                        NotificationBell(count = notificationCount, onClick = onNotificationsClick)
                     }
                 )
             }

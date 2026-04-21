@@ -60,6 +60,8 @@ import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class WorkerDashboardActivity : ComponentActivity() {
@@ -151,6 +153,7 @@ private fun WorkerDashboardScreen(
     val currentWorker = workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }
     val profession = currentWorker?.profession.orEmpty()
     val workerName = currentWorker?.name ?: "Worker"
+    val notificationCount = rememberUnreadNotificationCount(workerEmail)
 
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
     var tickerNow by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -205,6 +208,9 @@ private fun WorkerDashboardScreen(
                     title = "Worker Dashboard",
                     navigationIcon = {
                         BurgerMenuIcon(drawerState = drawerState)
+                    },
+                    actions = {
+                        NotificationBell(count = notificationCount, onClick = onNotificationsClick)
                     }
                 )
             }

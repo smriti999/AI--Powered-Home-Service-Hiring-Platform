@@ -27,6 +27,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +73,10 @@ private fun WorkerNotificationsScreen(onBack: () -> Unit) {
     val workers = AppStorage.loadWorkers(context)
     val worker = workers.find { it.email.equals(workerEmail, ignoreCase = true) }
     val workerName = worker?.name.orEmpty()
+
+    LaunchedEffect(workerEmail) {
+        AppStorage.markNotificationsSeen(context, workerEmail)
+    }
 
     val notifications = remember { AppStorage.loadNotifications(context) }
         .filter { it.userEmail.equals(workerEmail, ignoreCase = true) }

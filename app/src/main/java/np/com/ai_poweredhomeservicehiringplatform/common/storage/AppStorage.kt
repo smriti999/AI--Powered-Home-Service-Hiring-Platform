@@ -53,6 +53,14 @@ object AppStorage {
     private const val KEY_PRICE_MODEL_JSON = "price_model_json_v1"
     private const val KEY_WORK_TIMER_PREFIX = "work_timer_start_"
     private const val KEY_SEEDED_MARKET_HISTORY = "seeded_market_history_v1"
+    private const val KEY_SEEDED_PRICE_TRAINING_EXTRA = "seeded_price_training_extra_v1"
+    private const val KEY_DATASET_LAST_ERROR = "dataset_last_error_v1"
+    private const val KEY_NOTIFICATION_LAST_SEEN_PREFIX = "notif_last_seen_"
+
+    private const val MAX_DATASET_WORKERS = 250
+    private const val MAX_WORKS_PER_WORKER = 8
+    private const val MAX_REVIEWS_PER_WORKER = 60
+    private const val MAX_TRAIN_SAMPLES = 4000
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -99,6 +107,34 @@ object AppStorage {
         val timeSlot: String
     )
 
+    data class DatasetStats(
+        val workers: Int,
+        val works: Int,
+        val payments: Int,
+        val paidPayments: Int,
+        val ratings: Int,
+        val lastError: String?
+    )
+
+    fun getDatasetStats(context: Context): DatasetStats {
+        val d = dao(context)
+        val payments = d.getPayments()
+        return DatasetStats(
+            workers = d.getWorkers().size,
+            works = d.getWorks().size,
+            payments = payments.size,
+            paidPayments = payments.count { it.status == PaymentStatus.Paid && it.amountNpr > 0 },
+            ratings = d.getRatings().size,
+            lastError = prefs(context).getString(KEY_DATASET_LAST_ERROR, null)
+        )
+    }
+
+    private fun setDatasetLastError(context: Context, message: String?) {
+        val editor = prefs(context).edit()
+        if (message.isNullOrBlank()) editor.remove(KEY_DATASET_LAST_ERROR) else editor.putString(KEY_DATASET_LAST_ERROR, message)
+        editor.apply()
+    }
+
     data class PriceModelReport(
         val sampleCount: Int,
         val featureNames: List<String>,
@@ -135,8 +171,15 @@ object AppStorage {
             return
         }
 
-        val rows = runCatching { readDatasetCsv(context, assetFileName) }.getOrElse { emptyList() }
+        val rows = try {
+            setDatasetLastError(context, null)
+            readDatasetCsv(context, assetFileName)
+        } catch (e: Exception) {
+            setDatasetLastError(context, "Dataset read failed: ${e.javaClass.simpleName}: ${e.message}")
+            emptyList()
+        }
         if (rows.isEmpty()) return
+        val limitedRows = rows.take(MAX_DATASET_WORKERS)
 
         val serviceOptions = listOf(
             "Cleaning Services",
@@ -155,11 +198,11 @@ object AppStorage {
         val nameCounts = HashMap<String, Int>()
         val usedEmailPrefixes = HashSet<String>()
 
-        val workers = ArrayList<WorkerUiModel>(rows.size)
+        val workers = ArrayList<WorkerUiModel>(limitedRows.size)
         val works = ArrayList<WorkUiModel>()
         val payments = ArrayList<PaymentUiModel>()
         val ratings = ArrayList<RatingUiModel>()
-        val workerSettings = ArrayList<WorkerSettingsUiModel>(rows.size)
+        val workerSettings = ArrayList<WorkerSettingsUiModel>(limitedRows.size)
 
         var nextWorkerId = 1
         var nextWorkId = 1
@@ -167,9 +210,9 @@ object AppStorage {
         var nextRatingId = 1
 
         val now = System.currentTimeMillis()
-        val globalMeanRating = rows.map { it.avgRating }.filter { it > 0.0 }.average().let { if (it.isNaN()) 4.7 else it }
+        val globalMeanRating = limitedRows.map { it.avgRating }.filter { it > 0.0 }.average().let { if (it.isNaN()) 4.7 else it }
 
-        rows.forEachIndexed { idx, row ->
+        limitedRows.forEachIndexed { idx, row ->
             val baseName = row.profileName.trim()
             if (baseName.isBlank()) return@forEachIndexed
 
@@ -205,7 +248,7 @@ object AppStorage {
             )
             workerSettings.add(settings)
 
-            val demandWorksCount = demandToWorkCount(row.demand, row.reviewCount)
+            val demandWorksCount = min(MAX_WORKS_PER_WORKER, demandToWorkCount(row.demand, row.reviewCount))
             val timeSlot = normalizeTimeSlot(row.timeSlot)
 
             val seededAvgStars = if (row.avgRating <= 0.0) globalMeanRating else row.avgRating.coerceIn(1.0, 5.0)
@@ -259,7 +302,8 @@ object AppStorage {
             }
 
             val reviewCount = max(0, row.reviewCount)
-            repeat(reviewCount) { r ->
+            val generatedReviewCount = min(MAX_REVIEWS_PER_WORKER, reviewCount)
+            repeat(generatedReviewCount) { r ->
                 val workIdForReview = perReviewWorkIds[r % perReviewWorkIds.size]
                 val stars = generateSeededStars(
                     avgStars = seededAvgStars,
@@ -293,18 +337,35 @@ object AppStorage {
         context: Context,
         assetFileName: String = "dataset.csv"
     ) {
-        dao(context).clearRatings()
-        dao(context).clearPayments()
-        dao(context).clearWorks()
-        dao(context).clearWorkers()
-        dao(context).clearWorkerSettings()
+        setDatasetLastError(context, null)
+
+        runCatching {
+            db(context).runInTransaction {
+                dao(context).clearRatings()
+                dao(context).clearPayments()
+                dao(context).clearWorks()
+                dao(context).clearWorkers()
+                dao(context).clearWorkerSettings()
+            }
+        }.onFailure { e ->
+            setDatasetLastError(context, "Reset failed: ${e.javaClass.simpleName}: ${e.message}")
+            return
+        }
 
         prefs(context).edit()
             .remove(KEY_PRICE_MODEL_JSON)
+            .putBoolean(KEY_SEEDED_MARKET_HISTORY, false)
+            .putBoolean(KEY_SEEDED_PRICE_TRAINING_EXTRA, false)
             .putBoolean(KEY_SEEDED_DATASET_CSV, false)
             .apply()
 
         seedDatasetFromAssetsIfNeeded(context, assetFileName)
+        seedMarketHistoryFromAssetsIfNeeded(context, assetFileName)
+
+        val paidCount = dao(context).getPayments().count { it.status == PaymentStatus.Paid && it.amountNpr > 0 }
+        if (paidCount == 0) {
+            setDatasetLastError(context, "Import completed but no paid payments were created. Check CSV header/values.")
+        }
     }
 
     fun startWorkTimer(context: Context, workId: Int) {
@@ -437,7 +498,13 @@ object AppStorage {
             return
         }
 
-        val rows = runCatching { readDatasetCsv(context, assetFileName) }.getOrElse { emptyList() }
+        val rows = try {
+            setDatasetLastError(context, null)
+            readDatasetCsv(context, assetFileName)
+        } catch (e: Exception) {
+            setDatasetLastError(context, "Dataset read failed: ${e.javaClass.simpleName}: ${e.message}")
+            emptyList()
+        }
         if (rows.isEmpty()) return
 
         val existingWorks = dao(context).getWorks()
@@ -514,8 +581,15 @@ object AppStorage {
     }
 
     fun trainPriceModel(context: Context): PriceModelReport? {
-        val rows = collectPriceTrainRows(context)
+        var rows = collectPriceTrainRows(context)
+        if (rows.size < 12) {
+            seedPaidHistoryForTrainingIfNeeded(context)
+            rows = collectPriceTrainRows(context)
+        }
         if (rows.size < 12) return null
+        if (rows.size > MAX_TRAIN_SAMPLES) {
+            rows = rows.take(MAX_TRAIN_SAMPLES)
+        }
 
         val featureNames = listOf(
             "exp_norm",
@@ -561,7 +635,7 @@ object AppStorage {
 
         val w = DoubleArray(featureCount + 1) { 0.0 }
         val learningRate = 0.05
-        val epochs = 1200
+        val epochs = 500
         val n = xNorm.size.toDouble()
 
         repeat(epochs) {
@@ -619,6 +693,98 @@ object AppStorage {
 
         prefs(context).edit().putString(KEY_PRICE_MODEL_JSON, json.toString()).apply()
         return report
+    }
+
+    private fun seedPaidHistoryForTrainingIfNeeded(context: Context) {
+        val p = prefs(context)
+        if (p.getBoolean(KEY_SEEDED_PRICE_TRAINING_EXTRA, false)) return
+
+        val existingTrainRows = collectPriceTrainRows(context)
+        if (existingTrainRows.size >= 20) {
+            p.edit().putBoolean(KEY_SEEDED_PRICE_TRAINING_EXTRA, true).apply()
+            return
+        }
+
+        if (dao(context).getWorkers().isEmpty()) {
+            seedDatasetFromAssetsIfNeeded(context)
+        }
+
+        val workers = dao(context).getWorkers()
+        if (workers.isEmpty()) return
+
+        val worksExisting = dao(context).getWorks()
+        val paymentsExisting = dao(context).getPayments()
+
+        var nextWorkId = (worksExisting.maxOfOrNull { it.id } ?: 0) + 1
+        var nextPaymentId = (paymentsExisting.maxOfOrNull { it.id } ?: 0) + 1
+
+        val now = System.currentTimeMillis()
+        val newWorks = ArrayList<WorkUiModel>()
+        val newPayments = ArrayList<PaymentUiModel>()
+
+        val ratings = dao(context).getRatings()
+        val avgRatingsByWorker = ratings
+            .groupBy { it.workerName.lowercase() }
+            .mapValues { (_, rs) -> rs.map { it.stars }.average() }
+
+        val globalMean = if (ratings.isEmpty()) 4.7 else ratings.map { it.stars }.average()
+
+        workers.take(60).forEachIndexed { idx, worker ->
+            val service = worker.profession.ifBlank { "Cleaning Services" }
+            val loc = worker.location.ifBlank { "Kathmandu" }
+            val timeSlot = if (idx % 3 == 0) "Morning" else if (idx % 3 == 1) "Afternoon" else "Evening"
+            val avgStars = avgRatingsByWorker[worker.name.lowercase()] ?: globalMean
+            val expYears = parseIntOrZero(worker.experienceYears)
+
+            val basePrice = 1800.0 + (expYears * 120.0) + ((avgStars - 3.0) * 220.0)
+            val amount = generateSeededPriceAmount(
+                basePrice = basePrice,
+                avgRating = avgStars,
+                experienceYears = expYears,
+                demand = "Medium",
+                timeSlot = timeSlot,
+                rng = seededRandom(worker.name, idx + 77)
+            )
+
+            val workId = nextWorkId++
+            val userEmail = "train@gmail.com"
+            val detail = buildString {
+                append("User: ")
+                append(userEmail)
+                append("\nTime: ")
+                append(timeSlot)
+                append("\nLocation: ")
+                append(loc)
+                append("\nStreet/Home: -\n\nTraining history")
+            }
+
+            newWorks.add(
+                WorkUiModel(
+                    id = workId,
+                    workName = service,
+                    detail = detail,
+                    workerName = worker.name,
+                    status = WorkStatus.Completed
+                )
+            )
+
+            newPayments.add(
+                PaymentUiModel(
+                    id = nextPaymentId++,
+                    workId = workId,
+                    userEmail = userEmail,
+                    amountNpr = amount,
+                    method = PaymentMethod.CashOnDelivery,
+                    status = PaymentStatus.Paid,
+                    timestampMillis = now - (seededRandom(service, amount).nextInt(0, 180) * 24L * 60L * 60L * 1000L)
+                )
+            )
+        }
+
+        if (newWorks.isNotEmpty()) dao(context).replaceWorks(worksExisting + newWorks)
+        if (newPayments.isNotEmpty()) dao(context).replacePayments(paymentsExisting + newPayments)
+
+        p.edit().putBoolean(KEY_SEEDED_PRICE_TRAINING_EXTRA, true).apply()
     }
 
     fun getPriceModelReport(context: Context): PriceModelReport? {
@@ -734,6 +900,7 @@ object AppStorage {
         BufferedReader(InputStreamReader(input)).use { reader ->
             val headerLine = reader.readLine() ?: return emptyList()
             val header = parseCsvLine(headerLine)
+                .map { it.trim().trimStart('\uFEFF') }
             if (header.isEmpty()) return emptyList()
 
             val idx = header
@@ -1012,6 +1179,26 @@ object AppStorage {
 
     fun saveNotifications(context: Context, notifications: List<NotificationUiModel>) {
         dao(context).replaceNotifications(notifications)
+    }
+
+    fun getUnreadNotificationCount(context: Context, userEmail: String): Int {
+        val email = userEmail.trim()
+        if (email.isBlank()) return 0
+        val lastSeen = prefs(context).getLong(KEY_NOTIFICATION_LAST_SEEN_PREFIX + email.lowercase(), 0L)
+        return dao(context).getNotifications().count {
+            it.userEmail.equals(email, ignoreCase = true) && it.timestampMillis > lastSeen
+        }
+    }
+
+    fun markNotificationsSeen(context: Context, userEmail: String) {
+        val email = userEmail.trim()
+        if (email.isBlank()) return
+        val maxTs = dao(context).getNotifications()
+            .asSequence()
+            .filter { it.userEmail.equals(email, ignoreCase = true) }
+            .maxOfOrNull { it.timestampMillis }
+            ?: System.currentTimeMillis()
+        prefs(context).edit().putLong(KEY_NOTIFICATION_LAST_SEEN_PREFIX + email.lowercase(), maxTs).apply()
     }
 
     fun loadPayments(context: Context): List<PaymentUiModel> {

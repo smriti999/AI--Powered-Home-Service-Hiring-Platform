@@ -38,6 +38,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,6 +46,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
@@ -87,8 +91,11 @@ private fun AdminMlModelReportScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var report by remember { mutableStateOf(AppStorage.getPriceModelReport(context)) }
+    var stats by remember { mutableStateOf(AppStorage.getDatasetStats(context)) }
     var message by remember { mutableStateOf<String?>(null) }
     var showResetConfirm by remember { mutableStateOf(false) }
+    var isBusy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val navItems = listOf(
@@ -150,6 +157,21 @@ private fun AdminMlModelReportScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
 
+                        Text(
+                            text = "DB: workers=${stats.workers}, works=${stats.works}, payments=${stats.payments}, paid=${stats.paidPayments}, ratings=${stats.ratings}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        if (!stats.lastError.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = stats.lastError.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+
                         if (report == null) {
                             Text(
                                 text = "Model not trained yet. Tap Train to generate weights and metrics from your dataset data.",
@@ -184,15 +206,31 @@ private fun AdminMlModelReportScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = {
-                                val newReport = AppStorage.trainPriceModel(context)
-                                report = newReport
-                                message = if (newReport == null) {
-                                    "Training failed: not enough paid data."
-                                } else {
-                                    "Training completed."
+                                if (isBusy) return@Button
+                                isBusy = true
+                                message = "Training..."
+                                scope.launch {
+                                    val result = runCatching {
+                                        withContext(Dispatchers.Default) {
+                                            AppStorage.trainPriceModel(context)
+                                        }
+                                    }
+                                    val newReport = result.getOrNull()
+                                    report = newReport
+                                    stats = AppStorage.getDatasetStats(context)
+                                    message = if (result.isFailure) {
+                                        val e = result.exceptionOrNull()
+                                        "Training error: ${e?.javaClass?.simpleName}: ${e?.message}"
+                                    } else if (newReport == null) {
+                                        "Training failed: not enough paid data."
+                                    } else {
+                                        "Training completed."
+                                    }
+                                    isBusy = false
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isBusy
                         ) {
                             Text(text = "Train / Retrain")
                         }
@@ -201,7 +239,8 @@ private fun AdminMlModelReportScreen(
 
                         TextButton(
                             onClick = { showResetConfirm = true },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isBusy
                         ) {
                             Text(text = "Reset & Re-import Dataset")
                         }
@@ -274,10 +313,26 @@ private fun AdminMlModelReportScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        if (isBusy) return@TextButton
                         showResetConfirm = false
-                        AppStorage.resetAndReimportDatasetFromAssets(context)
-                        report = AppStorage.getPriceModelReport(context)
-                        message = "Dataset re-imported. Train the model again."
+                        isBusy = true
+                        message = "Resetting and importing..."
+                        scope.launch {
+                            val result = runCatching {
+                                withContext(Dispatchers.IO) {
+                                    AppStorage.resetAndReimportDatasetFromAssets(context)
+                                }
+                            }
+                            report = AppStorage.getPriceModelReport(context)
+                            stats = AppStorage.getDatasetStats(context)
+                            message = if (result.isFailure) {
+                                val e = result.exceptionOrNull()
+                                "Reset error: ${e?.javaClass?.simpleName}: ${e?.message}"
+                            } else {
+                                "Dataset re-imported. Train the model again."
+                            }
+                            isBusy = false
+                        }
                     }
                 ) {
                     Text(text = "Reset")

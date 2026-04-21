@@ -41,7 +41,9 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.StarRating
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import kotlin.math.ln
 import kotlin.math.max
@@ -92,6 +94,7 @@ private fun UserWorkersScreen(
     val userLocation = remember(userEmail) {
         AppStorage.loadUsers(context).firstOrNull { it.email.equals(userEmail, ignoreCase = true) }?.location.orEmpty()
     }
+    val notificationCount = rememberUnreadNotificationCount(userEmail)
 
     var search by rememberSaveable { mutableStateOf("") }
 
@@ -149,6 +152,12 @@ private fun UserWorkersScreen(
                             tint = Color.White
                         )
                     }
+                },
+                actions = {
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                    )
                 }
             )
         }

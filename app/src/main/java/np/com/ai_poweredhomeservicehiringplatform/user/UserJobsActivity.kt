@@ -48,6 +48,8 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.UserJobUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class UserJobsActivity : ComponentActivity() {
@@ -137,6 +139,7 @@ private fun UserJobsScreen(
     }
 
     val myWorks = works.filter { w -> extractUserEmail(w.detail)?.equals(userEmail, ignoreCase = true) == true }
+    val notificationCount = rememberUnreadNotificationCount(userEmail)
     val visibleWorks = if (selectedTab == 0) {
         myWorks.filter { it.status != WorkStatus.Completed }
     } else {
@@ -171,6 +174,10 @@ private fun UserJobsScreen(
                             tint = Color.White
                         )
                     }
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                    )
                 }
             )
         }

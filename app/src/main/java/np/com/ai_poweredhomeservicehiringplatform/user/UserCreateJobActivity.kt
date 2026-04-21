@@ -37,6 +37,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -52,6 +53,8 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 import java.util.Calendar
 
@@ -140,6 +143,7 @@ private fun UserCreateJobScreen(
     ) -> Unit
 ) {
     val context = LocalContext.current
+    val notificationCount = rememberUnreadNotificationCount(userEmail)
     val serviceOptions = listOf(
         "Cleaning Services",
         "Plumbing Services",
@@ -179,6 +183,12 @@ private fun UserCreateJobScreen(
                             tint = Color.White
                         )
                     }
+                },
+                actions = {
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                    )
                 }
             )
         },

@@ -1,6 +1,7 @@
 package np.com.ai_poweredhomeservicehiringplatform.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,15 +27,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.launch
+import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 
 @Composable
 fun StarRating(
@@ -83,6 +97,53 @@ fun LogoTopAppBar(
             actionIconContentColor = Color.White
         )
     )
+}
+
+@Composable
+fun NotificationBell(
+    count: Int,
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick) {
+        BadgedBox(
+            badge = {
+                if (count > 0) {
+                    Badge {
+                        Text(text = if (count > 99) "99+" else count.toString())
+                    }
+                }
+            }
+        ) {
+            Box {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun rememberUnreadNotificationCount(userEmail: String): Int {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var count by remember(userEmail) {
+        mutableIntStateOf(AppStorage.getUnreadNotificationCount(context, userEmail))
+    }
+
+    DisposableEffect(lifecycleOwner, userEmail) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
+                count = AppStorage.getUnreadNotificationCount(context, userEmail)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    return count
 }
 
 @Composable
