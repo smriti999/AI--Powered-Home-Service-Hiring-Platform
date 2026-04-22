@@ -57,7 +57,7 @@ import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 const val EXTRA_RATE_WORK_ID = "extra_rate_work_id"
-const val EXTRA_RATE_WORKER_NAME = "extra_rate_worker_name"
+const val EXTRA_RATE_WORKER_EMAIL = "extra_rate_worker_email"
 const val EXTRA_RATE_PROFESSION = "extra_rate_profession"
 
 class UserRateServiceActivity : ComponentActivity() {
@@ -72,14 +72,14 @@ class UserRateServiceActivity : ComponentActivity() {
         }
 
         val workId = intent.getIntExtra(EXTRA_RATE_WORK_ID, 0)
-        val workerName = intent.getStringExtra(EXTRA_RATE_WORKER_NAME).orEmpty()
+        val workerEmail = intent.getStringExtra(EXTRA_RATE_WORKER_EMAIL).orEmpty()
         val profession = intent.getStringExtra(EXTRA_RATE_PROFESSION).orEmpty()
 
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 RateServiceScreen(
                     workId = workId,
-                    workerName = workerName,
+                    workerEmail = workerEmail,
                     profession = profession,
                     onBack = { finish() },
                     onSubmitted = {
@@ -96,13 +96,17 @@ class UserRateServiceActivity : ComponentActivity() {
 @Composable
 private fun RateServiceScreen(
     workId: Int,
-    workerName: String,
+    workerEmail: String,
     profession: String,
     onBack: () -> Unit,
     onSubmitted: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val userEmail = AppStorage.currentUserEmail(context).orEmpty()
+    val workers = remember { AppStorage.loadWorkers(context) }
+    val workerName = remember(workerEmail, workers) {
+        workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }?.name.orEmpty()
+    }
 
     var stars by rememberSaveable { mutableIntStateOf(5) }
     var review by rememberSaveable { mutableStateOf("") }
@@ -180,7 +184,7 @@ private fun RateServiceScreen(
                                 id = nextId,
                                 workId = workId,
                                 userEmail = userEmail,
-                                workerName = workerName.ifBlank { "Worker" },
+                                workerEmail = workerEmail.ifBlank { "worker@gmail.com" },
                                 profession = profession,
                                 stars = stars,
                                 review = review.trim(),
@@ -234,7 +238,7 @@ private fun RateServiceScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = workerName.ifBlank { "Ram Kumar" },
+                text = workerName.ifBlank { "Worker" },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
@@ -308,4 +312,3 @@ private fun RateServiceScreen(
         )
     }
 }
-

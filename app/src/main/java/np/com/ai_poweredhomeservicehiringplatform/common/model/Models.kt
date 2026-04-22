@@ -83,7 +83,7 @@ data class WorkUiModel(
     val id: Int,
     val workName: String,
     val detail: String,
-    val workerName: String?,
+    val workerEmail: String?,
     val status: WorkStatus
 )
 
@@ -128,7 +128,7 @@ data class RatingUiModel(
     val id: Int,
     val workId: Int,
     val userEmail: String,
-    val workerName: String,
+    val workerEmail: String,
     val profession: String,
     val stars: Int,
     val review: String,

@@ -76,7 +76,7 @@ private fun WorkerEarningsScreen(onBack: () -> Unit) {
 
     // Filter works completed by this worker
     val completedWorks = works.filter { 
-        it.status == WorkStatus.Completed && it.workerName.equals(workerName, ignoreCase = true)
+        it.status == WorkStatus.Completed && it.workerEmail.equals(workerEmail, ignoreCase = true)
     }
 
     // Link works with payments and user job details (for location)

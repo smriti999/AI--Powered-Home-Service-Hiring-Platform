@@ -274,7 +274,7 @@ object AppStorage {
                         id = workId,
                         workName = profession,
                         detail = detail,
-                        workerName = uniqueName,
+                        workerEmail = email.lowercase(),
                         status = WorkStatus.Completed
                     )
                 )
@@ -314,7 +314,7 @@ object AppStorage {
                         id = nextRatingId++,
                         workId = workIdForReview,
                         userEmail = "user${((workIdForReview + r) % 500) + 1}@gmail.com",
-                        workerName = uniqueName,
+                        workerEmail = email.lowercase(),
                         profession = profession,
                         stars = stars,
                         review = "Review ${r + 1}",
@@ -392,7 +392,7 @@ object AppStorage {
         service: String,
         location: String,
         timeText: String,
-        workerName: String,
+        workerEmail: String,
         workerExperienceYears: String,
         durationMinutes: Int
     ): Int {
@@ -401,7 +401,7 @@ object AppStorage {
             service = service,
             location = location,
             timeText = timeText,
-            workerName = workerName,
+            workerEmail = workerEmail,
             workerExperienceYears = workerExperienceYears
         )
         val minutes = max(1, durationMinutes)
@@ -414,7 +414,7 @@ object AppStorage {
         service: String,
         location: String,
         timeText: String,
-        workerName: String,
+        workerEmail: String,
         workerExperienceYears: String
     ): Int {
         val works = dao(context).getWorks()
@@ -441,7 +441,7 @@ object AppStorage {
         val base = median(candidateAmounts).takeIf { it > 0.0 } ?: median(payments.map { it.amountNpr.toDouble() })
         if (base <= 0.0) return 0
 
-        val workerRatings = dao(context).getRatings().filter { it.workerName.equals(workerName, ignoreCase = true) }
+        val workerRatings = dao(context).getRatings().filter { it.workerEmail.equals(workerEmail, ignoreCase = true) }
         val globalMean = dao(context).getRatings().takeIf { it.isNotEmpty() }?.map { it.stars }?.average() ?: 4.7
         val workerAvg = if (workerRatings.isEmpty()) globalMean else workerRatings.map { it.stars }.average()
 
@@ -557,7 +557,7 @@ object AppStorage {
                     id = workId,
                     workName = service,
                     detail = detail,
-                    workerName = null,
+                    workerEmail = null,
                     status = WorkStatus.Completed
                 )
             )
@@ -724,7 +724,7 @@ object AppStorage {
 
         val ratings = dao(context).getRatings()
         val avgRatingsByWorker = ratings
-            .groupBy { it.workerName.lowercase() }
+            .groupBy { it.workerEmail.lowercase() }
             .mapValues { (_, rs) -> rs.map { it.stars }.average() }
 
         val globalMean = if (ratings.isEmpty()) 4.7 else ratings.map { it.stars }.average()
@@ -733,7 +733,7 @@ object AppStorage {
             val service = worker.profession.ifBlank { "Cleaning Services" }
             val loc = worker.location.ifBlank { "Kathmandu" }
             val timeSlot = if (idx % 3 == 0) "Morning" else if (idx % 3 == 1) "Afternoon" else "Evening"
-            val avgStars = avgRatingsByWorker[worker.name.lowercase()] ?: globalMean
+            val avgStars = avgRatingsByWorker[worker.email.lowercase()] ?: globalMean
             val expYears = parseIntOrZero(worker.experienceYears)
 
             val basePrice = 1800.0 + (expYears * 120.0) + ((avgStars - 3.0) * 220.0)
@@ -763,7 +763,7 @@ object AppStorage {
                     id = workId,
                     workName = service,
                     detail = detail,
-                    workerName = worker.name,
+                    workerEmail = worker.email.lowercase(),
                     status = WorkStatus.Completed
                 )
             )
@@ -823,17 +823,17 @@ object AppStorage {
         if (payments.isEmpty()) return emptyList()
 
         val worksById = works.associateBy { it.id }
-        val workersByName = workers.associateBy { it.name.lowercase() }
-        val reviewCountsByWorker = ratings.groupingBy { it.workerName.lowercase() }.eachCount()
+        val workersByEmail = workers.associateBy { it.email.lowercase() }
+        val reviewCountsByWorker = ratings.groupingBy { it.workerEmail.lowercase() }.eachCount()
         val avgRatingsByWorker = ratings
-            .groupBy { it.workerName.lowercase() }
+            .groupBy { it.workerEmail.lowercase() }
             .mapValues { (_, rs) -> rs.map { it.stars }.average() }
 
         return payments.mapNotNull { payment ->
             val work = worksById[payment.workId] ?: return@mapNotNull null
-            val workerName = work.workerName?.trim().orEmpty()
-            if (workerName.isBlank()) return@mapNotNull null
-            val worker = workersByName[workerName.lowercase()] ?: return@mapNotNull null
+            val workerEmail = work.workerEmail?.trim().orEmpty()
+            if (workerEmail.isBlank()) return@mapNotNull null
+            val worker = workersByEmail[workerEmail.lowercase()] ?: return@mapNotNull null
 
             val location = extractDetailField(work.detail, "Location") ?: worker.location
             val timeSlot = normalizeTimeSlot(extractDetailField(work.detail, "Time").orEmpty())
@@ -846,8 +846,8 @@ object AppStorage {
             PriceTrainRow(
                 amountNpr = payment.amountNpr.toDouble(),
                 experienceYears = parseIntOrZero(worker.experienceYears),
-                avgRating = avgRatingsByWorker[workerName.lowercase()] ?: 4.7,
-                reviewCount = reviewCountsByWorker[workerName.lowercase()] ?: 0,
+                avgRating = avgRatingsByWorker[workerEmail.lowercase()] ?: 4.7,
+                reviewCount = reviewCountsByWorker[workerEmail.lowercase()] ?: 0,
                 demandCount = demandCount,
                 location = location,
                 timeSlot = timeSlot

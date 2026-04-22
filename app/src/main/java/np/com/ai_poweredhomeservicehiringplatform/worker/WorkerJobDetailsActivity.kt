@@ -151,7 +151,7 @@ private fun WorkerJobDetailsScreen(
             service = work.workName,
             location = jobLocation,
             timeText = jobTime,
-            workerName = workerName,
+            workerEmail = workerEmail,
             workerExperienceYears = currentWorker.experienceYears
         )
     }
@@ -249,7 +249,7 @@ private fun WorkerJobDetailsScreen(
                                         service = work.workName,
                                         location = jobLocation,
                                         timeText = jobTime,
-                                        workerName = workerName,
+                                        workerEmail = workerEmail,
                                         workerExperienceYears = currentWorker.experienceYears,
                                         durationMinutes = durationMinutes
                                     )
@@ -284,7 +284,7 @@ private fun WorkerJobDetailsScreen(
                                         service = work.workName,
                                         location = jobLocation,
                                         timeText = jobTime,
-                                        workerName = workerName,
+                                        workerEmail = workerEmail,
                                         workerExperienceYears = currentWorker.experienceYears,
                                         durationMinutes = durationMinutes
                                     )
@@ -398,7 +398,10 @@ private fun WorkerJobDetailsScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            InfoRow(label = "Assigned To", value = work.workerName ?: "Not assigned")
+            val assignedName = work.workerEmail
+                ?.let { email -> workers.firstOrNull { it.email.equals(email, ignoreCase = true) }?.name }
+                ?: "Not assigned"
+            InfoRow(label = "Assigned To", value = assignedName)
             InfoRow(label = "User", value = extractUserEmail(work.detail) ?: "-")
             val startedAt = startMillis
             if (startedAt != null && work.status == WorkStatus.Booked) {
@@ -419,7 +422,7 @@ private fun WorkerJobDetailsScreen(
                 Button(
                     onClick = {
                         val updatedWorks = works.map { existing ->
-                            if (existing.id == work.id) existing.copy(status = WorkStatus.Booked, workerName = workerName) else existing
+                            if (existing.id == work.id) existing.copy(status = WorkStatus.Booked, workerEmail = workerEmail) else existing
                         }
                         works = updatedWorks
                         AppStorage.saveWorks(context, updatedWorks)
@@ -475,7 +478,7 @@ private fun WorkerJobDetailsScreen(
                 }
             }
 
-            if (work.status == WorkStatus.Booked && work.workerName?.equals(workerName, ignoreCase = true) == true) {
+            if (work.status == WorkStatus.Booked && work.workerEmail?.equals(workerEmail, ignoreCase = true) == true) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

@@ -68,6 +68,7 @@ private fun AdminTransactionDetailsScreen(paymentId: Int, onBack: () -> Unit) {
         val p = payment ?: return@remember null
         AppStorage.loadWorks(context).firstOrNull { it.id == p.workId }
     }
+    val workers = remember { AppStorage.loadWorkers(context) }
 
     val dateFmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
@@ -120,8 +121,10 @@ private fun AdminTransactionDetailsScreen(paymentId: Int, onBack: () -> Unit) {
             if (work == null) {
                 Text(text = "Work not found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
+                val workerName = work.workerEmail
+                    ?.let { email -> workers.firstOrNull { it.email.equals(email, ignoreCase = true) }?.name }
                 InfoRow(label = "Service", value = work.workName)
-                InfoRow(label = "Worker", value = work.workerName ?: "-")
+                InfoRow(label = "Worker", value = workerName ?: "-")
                 Text(
                     text = work.detail,
                     style = MaterialTheme.typography.bodySmall,
@@ -142,4 +145,3 @@ private fun InfoRow(label: String, value: String) {
         Spacer(modifier = Modifier.height(10.dp))
     }
 }
-

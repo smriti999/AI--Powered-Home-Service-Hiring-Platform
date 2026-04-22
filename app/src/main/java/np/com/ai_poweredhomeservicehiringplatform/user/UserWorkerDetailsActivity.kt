@@ -137,7 +137,7 @@ private fun UserWorkerDetailsScreen(
                 fontWeight = FontWeight.Medium
             )
 
-            val workerRatings = ratings.filter { it.workerName.equals(worker.name, ignoreCase = true) }
+            val workerRatings = ratings.filter { it.workerEmail.equals(worker.email, ignoreCase = true) }
             val avgRating = if (workerRatings.isNotEmpty()) workerRatings.map { it.stars }.average().toInt() else 0
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -227,4 +227,3 @@ private fun InfoRow(label: String, value: String) {
         Spacer(modifier = Modifier.height(10.dp))
     }
 }
-

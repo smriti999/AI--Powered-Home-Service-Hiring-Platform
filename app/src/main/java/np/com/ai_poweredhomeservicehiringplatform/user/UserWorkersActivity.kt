@@ -132,7 +132,7 @@ private fun UserWorkersScreen(
                     searchQuery = search
                 )
             }.thenByDescending { worker ->
-                val workerRatings = ratings.filter { it.workerName.equals(worker.name, ignoreCase = true) }
+                val workerRatings = ratings.filter { it.workerEmail.equals(worker.email, ignoreCase = true) }
                 workerRatings.size
             }.thenByDescending { worker ->
                 parseIntOrZero(worker.experienceYears)
@@ -187,7 +187,7 @@ private fun UserWorkersScreen(
                 )
             } else {
                 visibleWorkers.forEach { worker ->
-                    val workerRatings = ratings.filter { it.workerName.equals(worker.name, ignoreCase = true) }
+                    val workerRatings = ratings.filter { it.workerEmail.equals(worker.email, ignoreCase = true) }
                     val reviewCount = workerRatings.size
                     val avgRating = if (workerRatings.isNotEmpty()) workerRatings.map { it.stars }.average() else 0.0
                     val bayesRating = bayesianAverageStars(
@@ -274,7 +274,7 @@ private fun workerRecommendationScore(
     userLocation: String,
     searchQuery: String
 ): Double {
-    val workerRatings = allRatings.filter { it.workerName.equals(workerName, ignoreCase = true) }
+    val workerRatings = allRatings.filter { it.workerEmail.equals(workerEmail, ignoreCase = true) }
     val reviewCount = workerRatings.size
     val avgStars = if (reviewCount == 0) 0.0 else workerRatings.map { it.stars }.average()
     val bayes = bayesianAverageStars(avgStars, reviewCount, globalMeanStars, m = 8)
@@ -300,7 +300,7 @@ private fun workerRecommendationScore(
     val expScore = min(experience / 10.0, 1.0)
 
     val demand = allWorks.count {
-        it.workerName?.equals(workerName, ignoreCase = true) == true &&
+        it.workerEmail?.equals(workerEmail, ignoreCase = true) == true &&
             (it.status == WorkStatus.Booked || it.status == WorkStatus.Completed)
     }
     val demandScore = min(ln(1.0 + demand.toDouble()) / ln(1.0 + 20.0), 1.0)
@@ -312,7 +312,7 @@ private fun workerRecommendationScore(
     val professionScore = professionMatchScore(searchQuery, workerProfession)
 
     val valueScore = workerValueScore(
-        workerName = workerName,
+        workerEmail = workerEmail,
         allWorks = allWorks,
         allPayments = allPayments
     )
@@ -384,21 +384,21 @@ private fun tokenize(raw: String): Set<String> {
 }
 
 private fun workerValueScore(
-    workerName: String,
+    workerEmail: String,
     allWorks: List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel>,
     allPayments: List<np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel>
 ): Double {
     if (allPayments.isEmpty()) return 0.5
     val workIdToWorker = allWorks
-        .filter { it.workerName != null }
-        .associate { it.id to (it.workerName ?: "") }
+        .filter { it.workerEmail != null }
+        .associate { it.id to (it.workerEmail ?: "") }
 
     val paidAmounts = allPayments
         .asSequence()
         .filter { it.status == PaymentStatus.Paid }
         .mapNotNull { p ->
             val wName = workIdToWorker[p.workId] ?: return@mapNotNull null
-            if (!wName.equals(workerName, ignoreCase = true)) return@mapNotNull null
+            if (!wName.equals(workerEmail, ignoreCase = true)) return@mapNotNull null
             p.amountNpr
         }
         .toList()

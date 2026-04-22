@@ -90,13 +90,17 @@ private fun AdminWorkManagementScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
+    val workers = remember { AppStorage.loadWorkers(context) }
+    val workerNameByEmail = remember(workers) {
+        workers.associate { it.email.lowercase() to it.name }
+    }
 
     val filteredWorks = works.filter { work ->
         val query = searchQuery.trim()
         query.isBlank() ||
             work.workName.contains(query, ignoreCase = true) ||
             work.detail.contains(query, ignoreCase = true) ||
-            (work.workerName?.contains(query, ignoreCase = true) == true)
+            ((work.workerEmail?.lowercase()?.let { workerNameByEmail[it] })?.contains(query, ignoreCase = true) == true)
     }
 
     fun statusColor(status: WorkStatus): Color {
@@ -217,10 +221,13 @@ private fun AdminWorkManagementScreen(
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
+                                    val workerDisplayName = work.workerEmail
+                                        ?.lowercase()
+                                        ?.let { workerNameByEmail[it] }
                                     val workerLabel = when (work.status) {
                                         WorkStatus.Pending -> "Worker: Not assigned"
-                                        WorkStatus.Booked -> "Worker: ${work.workerName ?: "Not assigned"}"
-                                        WorkStatus.Completed -> "Completed by: ${work.workerName ?: "Unknown"}"
+                                        WorkStatus.Booked -> "Worker: ${workerDisplayName ?: "Not assigned"}"
+                                        WorkStatus.Completed -> "Completed by: ${workerDisplayName ?: "Unknown"}"
                                     }
 
                                     Text(text = workerLabel, style = MaterialTheme.typography.bodySmall)

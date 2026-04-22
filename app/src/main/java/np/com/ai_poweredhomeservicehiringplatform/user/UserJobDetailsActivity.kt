@@ -72,10 +72,10 @@ class UserJobDetailsActivity : ComponentActivity() {
                         i.putExtra(EXTRA_AMOUNT_NPR, amount)
                         startActivity(i)
                     },
-                    onRate = { id, workerName, profession ->
+                    onRate = { id, workerEmail, profession ->
                         val i = Intent(this, UserRateServiceActivity::class.java)
                         i.putExtra(EXTRA_RATE_WORK_ID, id)
-                        i.putExtra(EXTRA_RATE_WORKER_NAME, workerName)
+                        i.putExtra(EXTRA_RATE_WORKER_EMAIL, workerEmail)
                         i.putExtra(EXTRA_RATE_PROFESSION, profession)
                         startActivity(i)
                     },
@@ -118,7 +118,7 @@ private fun UserJobDetailsScreen(
     workId: Int,
     onBack: () -> Unit,
     onPay: (workId: Int, amountNpr: Int) -> Unit,
-    onRate: (workId: Int, workerName: String, profession: String) -> Unit,
+    onRate: (workId: Int, workerEmail: String, profession: String) -> Unit,
     onOpenWorker: (workerEmail: String) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -130,9 +130,9 @@ private fun UserJobDetailsScreen(
     val work = works.firstOrNull { it.id == workId }
     val isMyWork = work != null && extractUserEmail(work.detail)?.equals(userEmail, ignoreCase = true) == true
 
-    val provider = work?.workerName
-    val providerEmail = provider?.let { name ->
-        workers.firstOrNull { it.name.equals(name, ignoreCase = true) }?.email
+    val providerEmail = work?.workerEmail
+    val providerName = providerEmail?.let { email ->
+        workers.firstOrNull { it.email.equals(email, ignoreCase = true) }?.name
     }
 
     fun statusColor(status: WorkStatus): Color {
@@ -184,7 +184,7 @@ private fun UserJobDetailsScreen(
 
             InfoRow(label = "Time", value = timeText)
             InfoRow(label = "Location", value = locationText)
-            InfoRow(label = "Provider", value = provider ?: "Not assigned")
+            InfoRow(label = "Provider", value = providerName ?: "Not assigned")
 
             if (providerEmail != null) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -245,7 +245,7 @@ private fun UserJobDetailsScreen(
 
                     OutlinedButton(
                         onClick = {
-                            onRate(work.id, work.workerName ?: "", work.workName.substringBefore(" Services"))
+                            onRate(work.id, work.workerEmail.orEmpty(), work.workName.substringBefore(" Services"))
                         },
                         modifier = Modifier
                             .weight(1f)

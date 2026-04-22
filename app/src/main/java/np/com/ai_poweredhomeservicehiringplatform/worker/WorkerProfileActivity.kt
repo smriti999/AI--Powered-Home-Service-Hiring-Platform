@@ -82,7 +82,7 @@ private fun WorkerProfileScreen(onBack: () -> Unit) {
     val worker = workers.find { it.email.equals(email, ignoreCase = true) }
     
     val ratings = AppStorage.loadRatings(context)
-    val workerRatings = ratings.filter { it.workerName.equals(worker?.name, ignoreCase = true) }
+    val workerRatings = ratings.filter { it.workerEmail.equals(email, ignoreCase = true) }
     val avgRating = if (workerRatings.isNotEmpty()) workerRatings.map { it.stars }.average().toInt() else 0
 
     var isEditMode by remember { mutableStateOf(false) }

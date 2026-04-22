@@ -175,7 +175,7 @@ private fun WorkerDashboardScreen(
 
     val activeWorks = works.filter { work ->
         work.status == WorkStatus.Booked &&
-            (work.workerName ?: "").equals(workerName, ignoreCase = true) &&
+            (work.workerEmail ?: "").equals(workerEmail, ignoreCase = true) &&
             (searchQuery.trim().isBlank() ||
                 work.workName.contains(searchQuery.trim(), ignoreCase = true) ||
                 work.detail.contains(searchQuery.trim(), ignoreCase = true))
@@ -464,7 +464,7 @@ private fun WorkerDashboardScreen(
                                                 onClick = {
                                                     val updatedWorks = works.map { existing ->
                                                         if (existing.id == work.id) {
-                                                            existing.copy(status = WorkStatus.Booked, workerName = workerName)
+                                                            existing.copy(status = WorkStatus.Booked, workerEmail = workerEmail)
                                                         } else {
                                                             existing
                                                         }

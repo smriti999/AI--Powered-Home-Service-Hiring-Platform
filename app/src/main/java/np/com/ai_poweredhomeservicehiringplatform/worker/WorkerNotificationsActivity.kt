@@ -83,7 +83,7 @@ private fun WorkerNotificationsScreen(onBack: () -> Unit) {
         .sortedByDescending { it.timestampMillis }
 
     val works = remember { AppStorage.loadWorks(context) }
-        .filter { (it.workerName ?: "").equals(workerName, ignoreCase = true) }
+        .filter { (it.workerEmail ?: "").equals(workerEmail, ignoreCase = true) }
         .sortedByDescending { it.id }
 
     var selectedTab by remember { mutableIntStateOf(0) }

@@ -82,7 +82,7 @@ class UserJobsActivity : ComponentActivity() {
                     onRateClick = { workId, workerName, profession ->
                         val intent = Intent(this, UserRateServiceActivity::class.java)
                         intent.putExtra(EXTRA_RATE_WORK_ID, workId)
-                        intent.putExtra(EXTRA_RATE_WORKER_NAME, workerName)
+                        intent.putExtra(EXTRA_RATE_WORKER_EMAIL, workerName)
                         intent.putExtra(EXTRA_RATE_PROFESSION, profession)
                         startActivity(intent)
                     },
@@ -113,7 +113,7 @@ private fun UserJobsScreen(
     userEmail: String,
     onOpenDetails: (workId: Int) -> Unit,
     onPayClick: (workId: Int, amountNpr: Int) -> Unit,
-    onRateClick: (workId: Int, workerName: String, profession: String) -> Unit,
+    onRateClick: (workId: Int, workerEmail: String, profession: String) -> Unit,
     onBackClick: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -121,6 +121,8 @@ private fun UserJobsScreen(
     var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
     var payments by remember { mutableStateOf(AppStorage.loadPayments(context)) }
     var ratings by remember { mutableStateOf(AppStorage.loadRatings(context)) }
+
+    val workers = remember { AppStorage.loadWorkers(context) }
 
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
@@ -223,7 +225,9 @@ private fun UserJobsScreen(
                 visibleWorks.forEach { work ->
                     val timeText = extractTime(work.detail) ?: "-"
                     val title = "${work.workName.substringBefore(" Services")} - $timeText"
-                    val provider = work.workerName ?: "Not assigned"
+                    val provider = work.workerEmail
+                        ?.let { email -> workers.firstOrNull { it.email.equals(email, ignoreCase = true) }?.name }
+                        ?: "Not assigned"
                     val status = statusLabel(work.status)
                     val payment = payments.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
                     val isPaid = payment?.status == PaymentStatus.Paid
@@ -318,7 +322,7 @@ private fun UserJobsScreen(
 
                                     val rating = ratings.firstOrNull { it.workId == work.id && it.userEmail.equals(userEmail, ignoreCase = true) }
                                      OutlinedButton(
-                                         onClick = { onRateClick(work.id, work.workerName ?: "", work.workName.substringBefore(" Services")) },
+                                         onClick = { onRateClick(work.id, work.workerEmail.orEmpty(), work.workName.substringBefore(" Services")) },
                                          modifier = Modifier
                                              .height(36.dp)
                                              .weight(1f)

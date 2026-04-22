@@ -114,7 +114,7 @@ class UserCreateJobActivity : ComponentActivity() {
                                 id = nextWorkId,
                                 workName = service,
                                 detail = detailText,
-                                workerName = null,
+                                workerEmail = null,
                                 status = WorkStatus.Pending
                             )
                         )
