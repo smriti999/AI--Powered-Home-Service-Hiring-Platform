@@ -107,21 +107,7 @@ private fun UserProfileScreen(onBack: () -> Unit) {
                         )
                     }
                 },
-                actions = {
-                    NotificationBell(
-                        count = notificationCount,
-                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
-                    )
-                    if (!isEditMode) {
-                        IconButton(onClick = { isEditMode = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Profile",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
+
             )
         },
         bottomBar = {
@@ -155,7 +141,7 @@ private fun UserProfileScreen(onBack: () -> Unit) {
                                 }
 
                                 AppStorage.saveUsers(context, updatedList)
-                                AppStorage.setUserLoggedIn(context, true, userEmail)
+                                AppStorage.loginAsUser(context, userEmail)
                                 
                                 Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                                 isEditMode = false

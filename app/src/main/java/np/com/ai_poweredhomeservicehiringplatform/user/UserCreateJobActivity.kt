@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform.user
 
+import android.app.Activity
 import android.content.Intent
 import android.app.TimePickerDialog
 import android.os.Bundle
@@ -14,36 +15,37 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
@@ -59,6 +61,8 @@ import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceH
 import java.util.Calendar
 
 const val EXTRA_PRESET_SERVICE = "extra_preset_service"
+
+private enum class UserCreateJobBottomTab { Home, NeedWorker, Works }
 
 class UserCreateJobActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,7 +84,6 @@ class UserCreateJobActivity : ComponentActivity() {
                     userEmail = email,
                     presetService = presetService,
                     preferredWorkerName = preferredWorkerName,
-                    onBackClick = { finish() },
                     onSubmit = { service, description, _, location ->
                         val jobs = AppStorage.loadUserJobs(this)
                         val works = AppStorage.loadWorks(this)
@@ -125,7 +128,6 @@ class UserCreateJobActivity : ComponentActivity() {
                 )
             }
         }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,7 +136,6 @@ private fun UserCreateJobScreen(
     userEmail: String,
     presetService: String,
     preferredWorkerName: String,
-    onBackClick: () -> Unit,
     onSubmit: (
         service: String,
         description: String,
@@ -143,7 +144,9 @@ private fun UserCreateJobScreen(
     ) -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
     val notificationCount = rememberUnreadNotificationCount(userEmail)
+    val selectedTab = UserCreateJobBottomTab.NeedWorker
     val serviceOptions = listOf(
         "Cleaning Services",
         "Plumbing Services",
@@ -174,93 +177,130 @@ private fun UserCreateJobScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             LogoTopAppBar(
-                title = "Worker needed",
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
+                title = "Need Worker",
                 actions = {
                     NotificationBell(
                         count = notificationCount,
-                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                        onClick = {
+                            context.startActivity(Intent(context, UserNotificationsActivity::class.java))
+                            activity?.finish()
+                        }
                     )
                 }
             )
         },
         bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 18.dp)
-            ) {
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                Button(
-                    onClick = {
-                        val s = service.trim()
-                        val d = description.trim()
-                        val t = time.trim()
-                        val loc = location.trim()
-                        val street = streetHomeNumber.trim()
-                        val alt = alternativeLocation.trim()
-
-                        if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank() || (loc.isNotBlank() && street.isBlank())) {
-                            errorMessage = "All fields are required"
-                            return@Button
-                        }
-
-                        errorMessage = null
-                        val fullDescription = buildString {
-                            if (preferredWorkerName.isNotBlank()) {
-                                append("Preferred Worker: ")
-                                append(preferredWorkerName.trim())
-                                append("\n")
-                            }
-                            append("Time: ")
-                            append(t)
-                            append("\nLocation: ")
-                            append(loc)
-                            append("\nStreet/Home: ")
-                            append(street)
-                            if (alt.isNotBlank()) {
-                                append("\nOptional: ")
-                                append(alt)
-                            }
-                            append("\n\n")
-                            append(d)
-                        }
-                        onSubmit(s, fullDescription, t, loc)
-                    },
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 420.dp)
-                        .height(46.dp)
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
-                    Text(text = "Post Job")
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            val s = service.trim()
+                            val d = description.trim()
+                            val t = time.trim()
+                            val loc = location.trim()
+                            val street = streetHomeNumber.trim()
+                            val alt = alternativeLocation.trim()
+
+                            if (s.isBlank() || d.isBlank() || t.isBlank() || loc.isBlank() || (loc.isNotBlank() && street.isBlank())) {
+                                errorMessage = "All fields are required"
+                                return@Button
+                            }
+
+                            errorMessage = null
+                            val fullDescription = buildString {
+                                if (preferredWorkerName.isNotBlank()) {
+                                    append("Preferred Worker: ")
+                                    append(preferredWorkerName.trim())
+                                    append("\n")
+                                }
+                                append("Time: ")
+                                append(t)
+                                append("\nLocation: ")
+                                append(loc)
+                                append("\nStreet/Home: ")
+                                append(street)
+                                if (alt.isNotBlank()) {
+                                    append("\nOptional: ")
+                                    append(alt)
+                                }
+                                append("\n\n")
+                                append(d)
+                            }
+                            onSubmit(s, fullDescription, t, loc)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 420.dp)
+                            .height(46.dp)
+                    ) {
+                        Text(text = "Post Job")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            }
+
+                NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                        NavigationBarItem(
+                            selected = selectedTab == UserCreateJobBottomTab.Home,
+                            onClick = {
+                                context.startActivity(
+                                    Intent(context, UserHomeActivity::class.java)
+                                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                )
+                                activity?.finish()
+                            },
+                            icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
+                            label = { Text(text = "Home") }
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == UserCreateJobBottomTab.NeedWorker,
+                            onClick = { },
+                            icon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Need Worker") },
+                            label = { Text(text = "Need Worker") }
+                        )
+                        NavigationBarItem(
+                            selected = selectedTab == UserCreateJobBottomTab.Works,
+                            onClick = {
+                                context.startActivity(Intent(context, UserJobsActivity::class.java))
+                                activity?.finish()
+                            },
+                            icon = { Icon(imageVector = Icons.AutoMirrored.Filled.List, contentDescription = "Works") },
+                            label = { Text(text = "Works") }
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = {
+                                context.startActivity(Intent(context, UserMenuActivity::class.java))
+                                activity?.finish()
+                            },
+                            icon = { Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu") },
+                            label = { Text(text = "Menu") }
+                        )
+                    }
+                }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Text(
                 text = "Job Details",
                 modifier = Modifier
@@ -457,4 +497,5 @@ private fun UserCreateJobScreen(
             false
         ).show()
     }
+}
 }

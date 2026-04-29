@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform.worker
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -41,6 +42,8 @@ import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentMethod
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class WorkerPayoutSettingsActivity : ComponentActivity() {
@@ -66,7 +69,9 @@ class WorkerPayoutSettingsActivity : ComponentActivity() {
 @Composable
 private fun WorkerPayoutSettingsScreen(onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? Activity
     val workerEmail = AppStorage.currentWorkerEmail(context).orEmpty()
+    val notificationCount = rememberUnreadNotificationCount(workerEmail)
 
     val methodOptions = listOf(PaymentMethod.Esewa, PaymentMethod.Khalti, PaymentMethod.CashOnDelivery)
     var selectedMethod by rememberSaveable { mutableStateOf(AppStorage.loadWorkerPayoutMethod(context, workerEmail)) }
@@ -86,6 +91,15 @@ private fun WorkerPayoutSettingsScreen(onBack: () -> Unit) {
                             tint = Color.White
                         )
                     }
+                },
+                actions = {
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = {
+                            context.startActivity(Intent(context, WorkerNotificationsActivity::class.java))
+                            activity?.finish()
+                        }
+                    )
                 }
             )
         },
@@ -166,4 +180,3 @@ private fun WorkerPayoutSettingsScreen(onBack: () -> Unit) {
         }
     }
 }
-

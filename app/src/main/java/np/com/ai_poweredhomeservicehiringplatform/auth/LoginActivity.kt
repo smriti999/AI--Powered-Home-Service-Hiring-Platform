@@ -68,19 +68,28 @@ class LoginActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         if (AppStorage.isAdminLoggedIn(this)) {
-            startActivity(Intent(this, AdminDashboardActivity::class.java))
+            startActivity(
+                Intent(this, AdminDashboardActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
             finish()
             return
         }
 
         if (AppStorage.isUserLoggedIn(this)) {
-            startActivity(Intent(this, UserHomeActivity::class.java))
+            startActivity(
+                Intent(this, UserHomeActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
             finish()
             return
         }
 
         if (AppStorage.isWorkerLoggedIn(this)) {
-            startActivity(Intent(this, WorkerDashboardActivity::class.java))
+            startActivity(
+                Intent(this, WorkerDashboardActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
             finish()
             return
         }
@@ -89,12 +98,15 @@ class LoginActivity : ComponentActivity() {
             AIPoweredHomeServiceHiringPlatformTheme {
                 LoginScreen(
                     onAdminLoginSuccess = {
-                        AppStorage.setAdminLoggedIn(this, true)
-                        startActivity(Intent(this, AdminDashboardActivity::class.java))
+                        AppStorage.loginAsAdmin(this)
+                        startActivity(
+                            Intent(this, AdminDashboardActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        )
                         finish()
                     },
                     onUserLoginSuccess = { email ->
-                        AppStorage.setUserLoggedIn(this, true, email)
+                        AppStorage.loginAsUser(this, email)
                         val works = AppStorage.loadWorks(this)
                         val payments = AppStorage.loadPayments(this)
                         val ratings = AppStorage.loadRatings(this)
@@ -115,16 +127,23 @@ class LoginActivity : ComponentActivity() {
 
                         if (pendingCompleted != null) {
                             val i = Intent(this, UserJobDetailsActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                             i.putExtra(EXTRA_JOB_DETAIL_WORK_ID, pendingCompleted.id)
                             startActivity(i)
                         } else {
-                            startActivity(Intent(this, UserHomeActivity::class.java))
+                            startActivity(
+                                Intent(this, UserHomeActivity::class.java)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            )
                         }
                         finish()
                     },
                     onWorkerLoginSuccess = { email ->
-                        AppStorage.setWorkerLoggedIn(this, true, email)
-                        startActivity(Intent(this, WorkerDashboardActivity::class.java))
+                        AppStorage.loginAsWorker(this, email)
+                        startActivity(
+                            Intent(this, WorkerDashboardActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        )
                         finish()
                     },
                     onSignUpClick = {

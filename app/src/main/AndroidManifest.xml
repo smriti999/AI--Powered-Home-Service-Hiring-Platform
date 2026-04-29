@@ -6,9 +6,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.AIPoweredHomeServiceHiringPlatform"
         tools:targetApi="31">
@@ -24,10 +24,12 @@
         <activity android:name=".auth.SignUpActivity" android:exported="false" />
 
         <activity android:name=".admin.AdminDashboardActivity" android:exported="false" />
+        <activity android:name=".admin.AdminMenuActivity" android:exported="false" />
         <activity android:name=".admin.AdminRequestsActivity" android:exported="false" />
         <activity android:name=".admin.AdminUserManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkerManagementActivity" android:exported="false" />
         <activity android:name=".admin.AdminWorkManagementActivity" android:exported="false" />
+        <activity android:name=".admin.AdminCompletedWorksActivity" android:exported="false" />
         <activity android:name=".admin.AdminRevenueActivity" android:exported="false" />
         <activity android:name=".admin.AdminMlModelReportActivity" android:exported="false" />
         <activity android:name=".admin.AdminBroadcastActivity" android:exported="false" />
@@ -46,6 +48,7 @@
         <activity android:name=".user.UserWorkerDetailsActivity" android:exported="false" />
         <activity android:name=".user.UserSupportActivity" android:exported="false" />
         <activity android:name=".user.UserProfileActivity" android:exported="false" />
+        <activity android:name=".user.UserMenuActivity" android:exported="false" />
 
         <activity android:name=".worker.WorkerDashboardActivity" android:exported="false" />
         <activity android:name=".worker.WorkerRegistrationActivity" android:exported="false" />
@@ -55,6 +58,7 @@
         <activity android:name=".worker.WorkerJobDetailsActivity" android:exported="false" />
         <activity android:name=".worker.WorkerAvailabilityActivity" android:exported="false" />
         <activity android:name=".worker.WorkerPayoutSettingsActivity" android:exported="false" />
+        <activity android:name=".worker.WorkerMenuActivity" android:exported="false" />
 
     </application>
 

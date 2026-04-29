@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform.admin
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,28 +20,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,14 +50,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerApplicationStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.FullScreenLoading
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
 
 class AdminRequestsActivity : ComponentActivity() {
@@ -71,10 +75,25 @@ class AdminRequestsActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 AdminRequestsScreen(
-                    onDashboardClick = { startActivity(Intent(this, AdminDashboardActivity::class.java)) },
-                    onWorkersClick = { startActivity(Intent(this, AdminWorkerManagementActivity::class.java)) },
-                    onUsersClick = { startActivity(Intent(this, AdminUserManagementActivity::class.java)) },
-                    onWorksClick = { startActivity(Intent(this, AdminWorkManagementActivity::class.java)) },
+                    onDashboardClick = {
+                        startActivity(
+                            Intent(this, AdminDashboardActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        )
+                        finish()
+                    },
+                    onWorkersClick = {
+                        startActivity(Intent(this, AdminWorkerManagementActivity::class.java))
+                        finish()
+                    },
+                    onUsersClick = {
+                        startActivity(Intent(this, AdminUserManagementActivity::class.java))
+                        finish()
+                    },
+                    onWorksClick = {
+                        startActivity(Intent(this, AdminWorkManagementActivity::class.java))
+                        finish()
+                    },
                     onOpenCv = { uri ->
                         val intent = Intent(Intent.ACTION_VIEW)
                             .setDataAndType(uri, "application/pdf")
@@ -85,7 +104,6 @@ class AdminRequestsActivity : ComponentActivity() {
             }
         }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,100 +115,159 @@ private fun AdminRequestsScreen(
     onOpenCv: (uri: Uri) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var applications by remember { mutableStateOf(AppStorage.loadWorkerApplications(context)) }
+    val activity = context as? Activity
+    val scope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(true) }
+    var applications by remember { mutableStateOf(emptyList<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerApplicationUiModel>()) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        val loaded = withContext(Dispatchers.IO) { AppStorage.loadWorkerApplications(context) }
+        applications = loaded
+        isLoading = false
+    }
 
     val pendingApplications = applications.filter { it.status == WorkerApplicationStatus.Pending }
-
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val navItems = listOf(
-        NavigationItem("Dashboard", Icons.Default.Dashboard, onDashboardClick),
-        NavigationItem("Requests", Icons.Default.PendingActions, { }),
-        NavigationItem("Workers", Icons.Default.Group, onWorkersClick),
-        NavigationItem("Users", Icons.Default.Group, onUsersClick),
-        NavigationItem("Works", Icons.AutoMirrored.Filled.List, onWorksClick),
-        NavigationItem("Revenue", Icons.Default.MonetizationOn, {
-            context.startActivity(Intent(context, AdminRevenueActivity::class.java))
-        }),
-        NavigationItem("Broadcast", Icons.Default.Campaign, {
-            context.startActivity(Intent(context, AdminBroadcastActivity::class.java))
-        }),
-        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, {
-            AppStorage.setAdminLoggedIn(context, false)
-            context.startActivity(Intent(context, LoginActivity::class.java))
-            (context as? ComponentActivity)?.finish()
-        })
-    )
 
     fun updateApplicationStatus(appId: Int, status: WorkerApplicationStatus) {
         val updated = applications.map { existing ->
             if (existing.id == appId) existing.copy(status = status) else existing
         }
         applications = updated
-        AppStorage.saveWorkerApplications(context, updated)
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                AppStorage.saveWorkerApplications(context, updated)
+            }
+        }
     }
 
     fun approve(appId: Int) {
         val app = applications.firstOrNull { it.id == appId } ?: return
         updateApplicationStatus(appId, WorkerApplicationStatus.Approved)
 
-        val workers = AppStorage.loadWorkers(context)
-        val nextId = (workers.maxOfOrNull { it.id } ?: 0) + 1
-        val newWorker = WorkerUiModel(
-            id = nextId,
-            name = app.name,
-            status = "Active",
-            email = app.email,
-            phoneNumber = app.phoneNumber,
-            location = app.location,
-            streetHomeNumber = app.streetHomeNumber,
-            alternativeLocation = app.alternativeLocation,
-            gender = app.gender,
-            profession = app.profession,
-            experienceYears = app.experienceYears,
-            passwordHash = app.passwordHash
-        )
-        AppStorage.saveWorkers(context, workers + newWorker)
+        scope.launch {
+            val workers = withContext(Dispatchers.IO) { AppStorage.loadWorkers(context) }
+            val nextId = (workers.maxOfOrNull { it.id } ?: 0) + 1
+            val newWorker = WorkerUiModel(
+                id = nextId,
+                name = app.name,
+                status = "Active",
+                email = app.email,
+                phoneNumber = app.phoneNumber,
+                location = app.location,
+                streetHomeNumber = app.streetHomeNumber,
+                alternativeLocation = app.alternativeLocation,
+                gender = app.gender,
+                profession = app.profession,
+                experienceYears = app.experienceYears,
+                passwordHash = app.passwordHash
+            )
+            withContext(Dispatchers.IO) {
+                AppStorage.saveWorkers(context, workers + newWorker)
+            }
+        }
     }
 
     fun reject(appId: Int) {
         updateApplicationStatus(appId, WorkerApplicationStatus.Rejected)
     }
 
-    AppDrawer(drawerState = drawerState, items = navItems) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                LogoTopAppBar(
-                    title = "Worker Requests",
-                    navigationIcon = {
-                        BurgerMenuIcon(drawerState = drawerState)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            LogoTopAppBar(
+                title = "Worker Requests",
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
+                }
+            )
+        },
+        bottomBar = {
+            NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {
+                        context.startActivity(
+                            Intent(context, AdminDashboardActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        )
+                        activity?.finish()
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text(text = "Home") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {
+                        context.startActivity(Intent(context, AdminWorkerManagementActivity::class.java))
+                        activity?.finish()
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Group, contentDescription = "Workers") },
+                    label = { Text(text = "Workers") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {
+                        context.startActivity(Intent(context, AdminUserManagementActivity::class.java))
+                        activity?.finish()
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Person, contentDescription = "Users") },
+                    label = { Text(text = "Users") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = {
+                        context.startActivity(Intent(context, AdminMenuActivity::class.java))
+                        activity?.finish()
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu") },
+                    label = { Text(text = "Menu") }
                 )
             }
-        ) { innerPadding ->
-            if (pendingApplications.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "No applied applicant available")
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    pendingApplications.forEach { app ->
-                        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+        }
+    ) { innerPadding ->
+        if (isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                FullScreenLoading()
+            }
+            return@Scaffold
+        }
+        if (pendingApplications.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "No applied applicant available")
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                pendingApplications.forEach { app ->
+                    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
                                     text = "${app.name} (${app.profession})",
                                     style = MaterialTheme.typography.titleMedium,
@@ -275,4 +352,5 @@ private fun AdminRequestsScreen(
                 }
             }
         }
-    }}
+    }
+}

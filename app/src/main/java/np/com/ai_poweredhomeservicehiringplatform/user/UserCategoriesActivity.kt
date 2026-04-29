@@ -58,6 +58,7 @@ class UserCategoriesActivity : ComponentActivity() {
                         val intent = Intent(this, UserCreateJobActivity::class.java)
                         intent.putExtra(EXTRA_PRESET_SERVICE, category)
                         startActivity(intent)
+                        finish()
                     }
                 )
             }
@@ -136,4 +137,3 @@ private fun UserCategoriesScreen(
         }
     }
 }
-

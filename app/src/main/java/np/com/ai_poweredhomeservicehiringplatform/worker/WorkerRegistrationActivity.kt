@@ -142,15 +142,14 @@ private fun WorkerRegistrationScreen(
         }
 
         val (name, sizeBytes) = getFileNameAndSize(uri)
-        val minBytes = 2L * 1024L * 1024L
         val maxBytes = 5L * 1024L * 1024L
-        val isValidSize = sizeBytes != null && sizeBytes in minBytes..maxBytes
+        val isValidSize = sizeBytes != null && sizeBytes <= maxBytes
 
         if (!isValidSize) {
             cvUriString = null
             cvFileName = null
             cvSizeBytes = null
-            errorMessage = "CV must be a PDF between 2MB and 5MB"
+            errorMessage = "CV must be a PDF of 5MB or less"
             return@rememberLauncherForActivityResult
         }
 
@@ -160,9 +159,9 @@ private fun WorkerRegistrationScreen(
         errorMessage = null
     }
 
-    val minBytes = 2L * 1024L * 1024L
     val maxBytes = 5L * 1024L * 1024L
-    val isCvValid = cvUriString == null || (cvSizeBytes != null && cvSizeBytes in minBytes..maxBytes)
+    val currentCvSizeBytes = cvSizeBytes
+    val isCvValid = cvUriString == null || (currentCvSizeBytes != null && currentCvSizeBytes <= maxBytes)
     val isFormFilled =
         fullName.trim().isNotBlank() &&
             email.trim().isNotBlank() &&
@@ -242,8 +241,8 @@ private fun WorkerRegistrationScreen(
                             return@Button
                         }
 
-                        if (cvUri != null && (cvSize == null || cvSize !in minBytes..maxBytes)) {
-                            errorMessage = "CV must be a PDF between 2MB and 5MB"
+                        if (cvUri != null && (cvSize == null || cvSize > maxBytes)) {
+                            errorMessage = "CV must be a PDF of 5MB or less"
                             return@Button
                         }
 
@@ -559,4 +558,3 @@ private fun WorkerRegistrationScreen(
         )
     }
 }
-

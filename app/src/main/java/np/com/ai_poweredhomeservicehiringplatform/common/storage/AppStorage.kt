@@ -405,8 +405,8 @@ object AppStorage {
             workerExperienceYears = workerExperienceYears
         )
         val minutes = max(1, durationMinutes)
-        val factor = (minutes.toDouble() / 60.0).coerceIn(0.5, 8.0)
-        return (base.toDouble() * factor).roundToInt().coerceAtLeast(200)
+        val factor = (minutes.toDouble() / 60.0).coerceIn(0.10, 2.0)
+        return (base.toDouble() * factor).roundToInt().coerceIn(200, 40000)
     }
 
     fun recommendPriceNpr(
@@ -435,10 +435,12 @@ object AppStorage {
             if (workLoc.isNullOrBlank() || !workLoc.equals(location, ignoreCase = true)) return@mapNotNull null
             val workTime = extractDetailField(work.detail, "Time")
             if (workTime.isNullOrBlank() || normalizeTimeSlot(workTime) != timeSlot) return@mapNotNull null
-            payment.amountNpr.toDouble().takeIf { it > 0.0 }
+            payment.amountNpr.toDouble().takeIf { it in 200.0..25000.0 }
         }
 
-        val base = median(candidateAmounts).takeIf { it > 0.0 } ?: median(payments.map { it.amountNpr.toDouble() })
+        val allPaidAmounts = payments.mapNotNull { it.amountNpr.toDouble().takeIf { a -> a > 0.0 } }
+        val fallbackAmounts = allPaidAmounts.filter { it in 200.0..25000.0 }.ifEmpty { allPaidAmounts }
+        val base = median(candidateAmounts).takeIf { it > 0.0 } ?: median(fallbackAmounts)
         if (base <= 0.0) return 0
 
         val workerRatings = dao(context).getRatings().filter { it.workerEmail.equals(workerEmail, ignoreCase = true) }
@@ -482,7 +484,7 @@ object AppStorage {
             heuristicPrice
         }
 
-        return finalPrice.roundToInt().coerceAtLeast(200)
+        return finalPrice.roundToInt().coerceIn(200, 25000)
     }
 
     private fun seedMarketHistoryFromAssetsIfNeeded(
@@ -1019,7 +1021,13 @@ object AppStorage {
         timeSlot: String,
         rng: Random
     ): Int {
-        val safeBase = if (basePrice > 0.0) basePrice else 2500.0
+        val safeBase = if (basePrice > 0.0) {
+            var v = basePrice
+            while (v > 12000.0) v /= 10.0
+            v.coerceIn(600.0, 9000.0)
+        } else {
+            2500.0
+        }
         val demandFactor = when (demand.trim().lowercase()) {
             "high" -> 1.18
             "medium" -> 1.08
@@ -1147,6 +1155,46 @@ object AppStorage {
 
     fun currentWorkerEmail(context: Context): String? {
         return prefs(context).getString(KEY_CURRENT_WORKER_EMAIL, null)
+    }
+
+    fun logoutAll(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_ADMIN_LOGGED_IN, false)
+            .putBoolean(KEY_USER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_USER_EMAIL, null)
+            .putBoolean(KEY_WORKER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_WORKER_EMAIL, null)
+            .apply()
+    }
+
+    fun loginAsAdmin(context: Context) {
+        prefs(context).edit()
+            .putBoolean(KEY_ADMIN_LOGGED_IN, true)
+            .putBoolean(KEY_USER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_USER_EMAIL, null)
+            .putBoolean(KEY_WORKER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_WORKER_EMAIL, null)
+            .apply()
+    }
+
+    fun loginAsUser(context: Context, email: String) {
+        prefs(context).edit()
+            .putBoolean(KEY_ADMIN_LOGGED_IN, false)
+            .putBoolean(KEY_USER_LOGGED_IN, true)
+            .putString(KEY_CURRENT_USER_EMAIL, email)
+            .putBoolean(KEY_WORKER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_WORKER_EMAIL, null)
+            .apply()
+    }
+
+    fun loginAsWorker(context: Context, email: String) {
+        prefs(context).edit()
+            .putBoolean(KEY_ADMIN_LOGGED_IN, false)
+            .putBoolean(KEY_USER_LOGGED_IN, false)
+            .putString(KEY_CURRENT_USER_EMAIL, null)
+            .putBoolean(KEY_WORKER_LOGGED_IN, true)
+            .putString(KEY_CURRENT_WORKER_EMAIL, email)
+            .apply()
     }
 
     fun loadUsers(context: Context): List<UserUiModel> {

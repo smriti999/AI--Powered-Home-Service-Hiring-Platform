@@ -71,6 +71,7 @@ class UserJobDetailsActivity : ComponentActivity() {
                         i.putExtra(EXTRA_WORK_ID, id)
                         i.putExtra(EXTRA_AMOUNT_NPR, amount)
                         startActivity(i)
+                        finish()
                     },
                     onRate = { id, workerEmail, profession ->
                         val i = Intent(this, UserRateServiceActivity::class.java)
@@ -78,11 +79,13 @@ class UserJobDetailsActivity : ComponentActivity() {
                         i.putExtra(EXTRA_RATE_WORKER_EMAIL, workerEmail)
                         i.putExtra(EXTRA_RATE_PROFESSION, profession)
                         startActivity(i)
+                        finish()
                     },
                     onOpenWorker = { workerEmail ->
                         val i = Intent(this, UserWorkerDetailsActivity::class.java)
                         i.putExtra(EXTRA_WORKER_EMAIL, workerEmail)
                         startActivity(i)
+                        finish()
                     }
                 )
             }
@@ -228,9 +231,9 @@ private fun UserJobDetailsScreen(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
-                    } else {
+                    } else if (amount > 0) {
                         Button(
-                            onClick = { onPay(work.id, payment?.amountNpr ?: 0) },
+                            onClick = { onPay(work.id, amount) },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(44.dp),
@@ -241,6 +244,13 @@ private fun UserJobDetailsScreen(
                         ) {
                             Text(text = "Pay Now")
                         }
+                    } else {
+                        Text(
+                            text = "Payment: Amount not decided",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     OutlinedButton(

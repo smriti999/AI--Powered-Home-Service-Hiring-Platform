@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform.worker
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -115,6 +116,7 @@ private fun WorkerJobDetailsScreen(
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? Activity
     val workerEmail = AppStorage.currentWorkerEmail(context).orEmpty()
     val workers = remember { AppStorage.loadWorkers(context) }
     val currentWorker = workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }
@@ -181,7 +183,10 @@ private fun WorkerJobDetailsScreen(
                 actions = {
                     NotificationBell(
                         count = notificationCount,
-                        onClick = { context.startActivity(Intent(context, WorkerNotificationsActivity::class.java)) }
+                        onClick = {
+                            context.startActivity(Intent(context, WorkerNotificationsActivity::class.java))
+                            activity?.finish()
+                        }
                     )
                 }
             )

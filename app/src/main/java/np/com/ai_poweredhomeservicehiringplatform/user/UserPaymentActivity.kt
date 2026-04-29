@@ -96,6 +96,8 @@ private fun PaymentScreen(
     var selectedMethod by rememberSaveable { mutableStateOf(PaymentMethod.Esewa) }
     var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
 
+    val contentArrangement = if (amountNpr > 0) Arrangement.SpaceBetween else Arrangement.Top
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -119,7 +121,7 @@ private fun PaymentScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = contentArrangement
         ) {
             Column(
                 modifier = Modifier
@@ -137,86 +139,97 @@ private fun PaymentScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                if (amountNpr > 0) {
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                Text(
-                    text = "Select Payment Method",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                    Text(
+                        text = "Select Payment Method",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                PaymentOption(
-                    label = "eSewa Wallet",
-                    selected = selectedMethod == PaymentMethod.Esewa,
-                    onClick = { selectedMethod = PaymentMethod.Esewa }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                PaymentOption(
-                    label = "Khalti Wallet",
-                    selected = selectedMethod == PaymentMethod.Khalti,
-                    onClick = { selectedMethod = PaymentMethod.Khalti }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                PaymentOption(
-                    label = "Cash on Delivery",
-                    selected = selectedMethod == PaymentMethod.CashOnDelivery,
-                    onClick = { selectedMethod = PaymentMethod.CashOnDelivery }
-                )
+                    PaymentOption(
+                        label = "eSewa Wallet",
+                        selected = selectedMethod == PaymentMethod.Esewa,
+                        onClick = { selectedMethod = PaymentMethod.Esewa }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    PaymentOption(
+                        label = "Khalti Wallet",
+                        selected = selectedMethod == PaymentMethod.Khalti,
+                        onClick = { selectedMethod = PaymentMethod.Khalti }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    PaymentOption(
+                        label = "Cash on Delivery",
+                        selected = selectedMethod == PaymentMethod.CashOnDelivery,
+                        onClick = { selectedMethod = PaymentMethod.CashOnDelivery }
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Final amount not decided yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Button(
-                onClick = {
-                    val payments = AppStorage.loadPayments(context)
-                    val existing = payments.firstOrNull { it.workId == workId && it.userEmail.equals(userEmail, ignoreCase = true) }
-                    val updated = if (existing != null) {
-                        payments.map {
-                            if (it.id == existing.id) {
-                                it.copy(
-                                    status = PaymentStatus.Paid,
-                                    method = selectedMethod,
-                                    timestampMillis = System.currentTimeMillis()
-                                )
-                            } else it
+            if (amountNpr > 0) {
+                Button(
+                    onClick = {
+                        val payments = AppStorage.loadPayments(context)
+                        val existing = payments.firstOrNull { it.workId == workId && it.userEmail.equals(userEmail, ignoreCase = true) }
+                        val updated = if (existing != null) {
+                            payments.map {
+                                if (it.id == existing.id) {
+                                    it.copy(
+                                        status = PaymentStatus.Paid,
+                                        method = selectedMethod,
+                                        timestampMillis = System.currentTimeMillis()
+                                    )
+                                } else it
+                            }
+                        } else {
+                            val nextId = (payments.maxOfOrNull { it.id } ?: 0) + 1
+                            payments + PaymentUiModel(
+                                id = nextId,
+                                workId = workId,
+                                userEmail = userEmail,
+                                amountNpr = amountNpr,
+                                method = selectedMethod,
+                                status = PaymentStatus.Paid,
+                                timestampMillis = System.currentTimeMillis()
+                            )
                         }
-                    } else {
-                        val nextId = (payments.maxOfOrNull { it.id } ?: 0) + 1
-                        payments + PaymentUiModel(
-                            id = nextId,
-                            workId = workId,
+                        AppStorage.savePayments(context, updated)
+
+                        val notifications = AppStorage.loadNotifications(context)
+                        val nextNId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
+                        val updatedNotifications = notifications + NotificationUiModel(
+                            id = nextNId,
                             userEmail = userEmail,
-                            amountNpr = amountNpr,
-                            method = selectedMethod,
-                            status = PaymentStatus.Paid,
+                            title = "Payment Successful",
+                            message = "Payment completed via ${when (selectedMethod) {
+                                PaymentMethod.Esewa -> "eSewa"
+                                PaymentMethod.Khalti -> "Khalti"
+                                PaymentMethod.CashOnDelivery -> "Cash on Delivery"
+                            }}.",
                             timestampMillis = System.currentTimeMillis()
                         )
-                    }
-                    AppStorage.savePayments(context, updated)
+                        AppStorage.saveNotifications(context, updatedNotifications)
 
-                    val notifications = AppStorage.loadNotifications(context)
-                    val nextNId = (notifications.maxOfOrNull { it.id } ?: 0) + 1
-                    val updatedNotifications = notifications + NotificationUiModel(
-                        id = nextNId,
-                        userEmail = userEmail,
-                        title = "Payment Successful",
-                        message = "Payment completed via ${when (selectedMethod) {
-                            PaymentMethod.Esewa -> "eSewa"
-                            PaymentMethod.Khalti -> "Khalti"
-                            PaymentMethod.CashOnDelivery -> "Cash on Delivery"
-                        }}.",
-                        timestampMillis = System.currentTimeMillis()
-                    )
-                    AppStorage.saveNotifications(context, updatedNotifications)
-
-                    showSuccessDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 520.dp)
-                    .height(48.dp)
-            ) {
-                Text(text = "PAY NOW")
+                        showSuccessDialog = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 520.dp)
+                        .height(48.dp)
+                ) {
+                    Text(text = "PAY NOW")
+                }
             }
         }
     }

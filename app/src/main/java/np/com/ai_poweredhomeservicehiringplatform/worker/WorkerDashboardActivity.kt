@@ -5,50 +5,60 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOn
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import np.com.ai_poweredhomeservicehiringplatform.R
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.NotificationUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
@@ -56,10 +66,8 @@ import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.AppDrawer
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.BurgerMenuIcon
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.FullScreenLoading
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
-import np.com.ai_poweredhomeservicehiringplatform.ui.components.NavigationItem
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.rememberUnreadNotificationCount
 import np.com.ai_poweredhomeservicehiringplatform.ui.theme.AIPoweredHomeServiceHiringPlatformTheme
@@ -78,26 +86,15 @@ class WorkerDashboardActivity : ComponentActivity() {
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
                 WorkerDashboardScreen(
-                    onProfileClick = { startActivity(Intent(this, WorkerProfileActivity::class.java)) },
-                    onEarningsClick = { startActivity(Intent(this, WorkerEarningsActivity::class.java)) },
-                    onNotificationsClick = { startActivity(Intent(this, WorkerNotificationsActivity::class.java)) },
-                    onAvailabilityClick = { startActivity(Intent(this, WorkerAvailabilityActivity::class.java)) },
-                    onPayoutClick = { startActivity(Intent(this, WorkerPayoutSettingsActivity::class.java)) },
                     onOpenWork = { workId ->
                         val intent = Intent(this, WorkerJobDetailsActivity::class.java)
                         intent.putExtra(EXTRA_WORK_DETAIL_ID, workId)
                         startActivity(intent)
-                    },
-                    onLogout = {
-                        AppStorage.setWorkerLoggedIn(this, false, null)
-                        startActivity(Intent(this, LoginActivity::class.java))
-                        finish()
                     }
                 )
             }
         }
     }
-}
 
 private fun matchesProfession(workName: String, profession: String): Boolean {
     val name = workName.lowercase()
@@ -137,32 +134,54 @@ private fun formatDuration(durationMillis: Long): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WorkerDashboardScreen(
-    onProfileClick: () -> Unit,
-    onEarningsClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    onAvailabilityClick: () -> Unit,
-    onPayoutClick: () -> Unit,
-    onOpenWork: (workId: Int) -> Unit,
-    onLogout: () -> Unit
+    onOpenWork: (workId: Int) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    var isLoading by rememberSaveable { mutableStateOf(true) }
 
     val workerEmail = AppStorage.currentWorkerEmail(context).orEmpty()
-    val workers = remember { AppStorage.loadWorkers(context) }
+    var workers by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel>>(emptyList()) }
     val currentWorker = workers.firstOrNull { it.email.equals(workerEmail, ignoreCase = true) }
     val profession = currentWorker?.profession.orEmpty()
     val workerName = currentWorker?.name ?: "Worker"
     val notificationCount = rememberUnreadNotificationCount(workerEmail)
 
-    var works by remember { mutableStateOf(AppStorage.loadWorks(context)) }
+    var works by remember { mutableStateOf<List<WorkUiModel>>(emptyList()) }
     var tickerNow by remember { mutableStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
+        isLoading = true
+        val loaded = withContext(Dispatchers.IO) {
+            listOf(
+                AppStorage.loadWorkers(context),
+                AppStorage.loadWorks(context)
+            )
+        }
+        @Suppress("UNCHECKED_CAST")
+        workers = loaded[0] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel>
+        @Suppress("UNCHECKED_CAST")
+        works = loaded[1] as List<WorkUiModel>
+        isLoading = false
+
         while (true) {
             tickerNow = System.currentTimeMillis()
             delay(1000)
         }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch {
+                    works = withContext(Dispatchers.IO) { AppStorage.loadWorks(context) }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val availableWorks = works.filter { work ->
@@ -180,17 +199,7 @@ private fun WorkerDashboardScreen(
                 work.workName.contains(searchQuery.trim(), ignoreCase = true) ||
                 work.detail.contains(searchQuery.trim(), ignoreCase = true))
     }
-
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val navItems = listOf(
-        NavigationItem("Dashboard", Icons.Default.Dashboard, { }),
-        NavigationItem("Profile", Icons.Default.AccountCircle, onProfileClick),
-        NavigationItem("Earnings", Icons.Default.Payments, onEarningsClick),
-        NavigationItem("Notifications", Icons.Default.Notifications, onNotificationsClick),
-        NavigationItem("Availability", Icons.Default.ToggleOn, onAvailabilityClick),
-        NavigationItem("Payout", Icons.Default.AccountBalanceWallet, onPayoutClick),
-        NavigationItem("Logout", Icons.AutoMirrored.Filled.ExitToApp, onLogout)
-    )
+    var selectedTab by remember { mutableStateOf(WorkerBottomTab.Home) }
 
     fun statusColor(status: WorkStatus): Color {
         return when (status) {
@@ -199,33 +208,97 @@ private fun WorkerDashboardScreen(
             WorkStatus.Completed -> Color(0xFF2E7D32)
         }
     }
-
-    AppDrawer(drawerState = drawerState, items = navItems) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                LogoTopAppBar(
-                    title = "Worker Dashboard",
-                    navigationIcon = {
-                        BurgerMenuIcon(drawerState = drawerState)
-                    },
-                    actions = {
-                        NotificationBell(count = notificationCount, onClick = onNotificationsClick)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            LogoTopAppBar(
+                title = "Worker Dashboard",
+                navigationIcon = {
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(32.dp)
+                    )
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                isLoading = true
+                                works = withContext(Dispatchers.IO) { AppStorage.loadWorks(context) }
+                                isLoading = false
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Color.White
+                        )
                     }
+                    NotificationBell(
+                        count = notificationCount,
+                        onClick = { context.startActivity(Intent(context, WorkerNotificationsActivity::class.java)) }
+                    )
+                }
+            )
+        },
+        bottomBar = {
+            NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                NavigationBarItem(
+                    selected = selectedTab == WorkerBottomTab.Home,
+                    onClick = { selectedTab = WorkerBottomTab.Home },
+                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "Home") },
+                    label = { Text(text = "Home") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == WorkerBottomTab.Earnings,
+                    onClick = {
+                        selectedTab = WorkerBottomTab.Earnings
+                        context.startActivity(Intent(context, WorkerEarningsActivity::class.java))
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Payments, contentDescription = "Earnings") },
+                    label = { Text(text = "Earnings") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == WorkerBottomTab.Availability,
+                    onClick = {
+                        selectedTab = WorkerBottomTab.Availability
+                        context.startActivity(Intent(context, WorkerAvailabilityActivity::class.java))
+                    },
+                    icon = { Icon(imageVector = Icons.Default.ToggleOn, contentDescription = "Availability") },
+                    label = { Text(text = "Availability") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == WorkerBottomTab.Menu,
+                    onClick = {
+                        selectedTab = WorkerBottomTab.Menu
+                        context.startActivity(Intent(context, WorkerMenuActivity::class.java))
+                    },
+                    icon = { Icon(imageVector = Icons.Default.Menu, contentDescription = "Menu") },
+                    label = { Text(text = "Menu") }
                 )
             }
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                Text(
-                    text = profession.ifBlank { "Profession: -" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            if (isLoading) {
+                FullScreenLoading()
+                return@Column
+            }
+            Text(
+                text = profession.ifBlank { "Profession: -" },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
                 Spacer(modifier = Modifier.padding(top = 10.dp))
 

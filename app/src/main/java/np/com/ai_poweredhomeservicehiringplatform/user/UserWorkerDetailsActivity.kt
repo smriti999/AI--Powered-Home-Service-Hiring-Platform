@@ -67,6 +67,7 @@ class UserWorkerDetailsActivity : ComponentActivity() {
                         intent.putExtra(EXTRA_PRESET_SERVICE, profession)
                         intent.putExtra(EXTRA_PREFERRED_WORKER_NAME, workerName)
                         startActivity(intent)
+                        finish()
                     }
                 )
             }

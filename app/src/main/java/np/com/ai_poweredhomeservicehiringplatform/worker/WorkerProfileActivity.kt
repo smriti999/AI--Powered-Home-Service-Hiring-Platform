@@ -108,17 +108,6 @@ private fun WorkerProfileScreen(onBack: () -> Unit) {
                             tint = Color.White
                         )
                     }
-                },
-                actions = {
-                    if (!isEditMode) {
-                        IconButton(onClick = { isEditMode = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Profile",
-                                tint = Color.White
-                            )
-                        }
-                    }
                 }
             )
         },
@@ -155,7 +144,7 @@ private fun WorkerProfileScreen(onBack: () -> Unit) {
                                 }
 
                                 AppStorage.saveWorkers(context, updatedList)
-                                AppStorage.setWorkerLoggedIn(context, true, workerEmail)
+                                AppStorage.loginAsWorker(context, workerEmail)
                                 
                                 Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
                                 isEditMode = false

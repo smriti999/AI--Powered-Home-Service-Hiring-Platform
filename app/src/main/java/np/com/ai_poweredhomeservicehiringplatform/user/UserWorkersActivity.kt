@@ -1,5 +1,6 @@
 package np.com.ai_poweredhomeservicehiringplatform.user
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -26,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,10 +38,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import np.com.ai_poweredhomeservicehiringplatform.auth.LoginActivity
 import np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.model.WorkStatus
 import np.com.ai_poweredhomeservicehiringplatform.common.storage.AppStorage
+import np.com.ai_poweredhomeservicehiringplatform.ui.components.FullScreenLoading
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.LogoTopAppBar
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.NotificationBell
 import np.com.ai_poweredhomeservicehiringplatform.ui.components.StarRating
@@ -51,6 +56,7 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 const val EXTRA_WORKER_EMAIL = "extra_worker_email"
+const val EXTRA_INITIAL_WORKER_SEARCH = "extra_initial_worker_search"
 
 class UserWorkersActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,12 +71,15 @@ class UserWorkersActivity : ComponentActivity() {
 
         setContent {
             AIPoweredHomeServiceHiringPlatformTheme {
+                val initialSearch = intent?.getStringExtra(EXTRA_INITIAL_WORKER_SEARCH).orEmpty()
                 UserWorkersScreen(
+                    initialSearch = initialSearch,
                     onBack = { finish() },
                     onWorkerClick = { workerEmail ->
                         val intent = Intent(this, UserWorkerDetailsActivity::class.java)
                         intent.putExtra(EXTRA_WORKER_EMAIL, workerEmail)
                         startActivity(intent)
+                        finish()
                     }
                 )
             }
@@ -81,22 +90,53 @@ class UserWorkersActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UserWorkersScreen(
+    initialSearch: String,
     onBack: () -> Unit,
     onWorkerClick: (workerEmail: String) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val workers = remember { AppStorage.loadWorkers(context) }
-    val ratings = remember { AppStorage.loadRatings(context) }
-    val works = remember { AppStorage.loadWorks(context) }
-    val payments = remember { AppStorage.loadPayments(context) }
-    val workerSettings = remember { AppStorage.loadAllWorkerSettings(context) }
+    val activity = context as? Activity
+    var isLoading by rememberSaveable { mutableStateOf(true) }
+    var workers by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel>>(emptyList()) }
+    var ratings by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.RatingUiModel>>(emptyList()) }
+    var works by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel>>(emptyList()) }
+    var payments by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel>>(emptyList()) }
+    var workerSettings by remember { mutableStateOf<List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerSettingsUiModel>>(emptyList()) }
     val userEmail = remember { AppStorage.currentUserEmail(context).orEmpty() }
-    val userLocation = remember(userEmail) {
-        AppStorage.loadUsers(context).firstOrNull { it.email.equals(userEmail, ignoreCase = true) }?.location.orEmpty()
-    }
+    var userLocation by remember { mutableStateOf("") }
     val notificationCount = rememberUnreadNotificationCount(userEmail)
 
-    var search by rememberSaveable { mutableStateOf("") }
+    var search by rememberSaveable { mutableStateOf(initialSearch) }
+
+    LaunchedEffect(Unit) {
+        isLoading = true
+        val loaded = withContext(Dispatchers.IO) {
+            listOf(
+                AppStorage.loadUsers(context),
+                AppStorage.loadWorkers(context),
+                AppStorage.loadRatings(context),
+                AppStorage.loadWorks(context),
+                AppStorage.loadPayments(context),
+                AppStorage.loadAllWorkerSettings(context)
+            )
+        }
+        @Suppress("UNCHECKED_CAST")
+        userLocation = (loaded[0] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.UserUiModel>)
+            .firstOrNull { it.email.equals(userEmail, ignoreCase = true) }
+            ?.location
+            .orEmpty()
+        @Suppress("UNCHECKED_CAST")
+        workers = loaded[1] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerUiModel>
+        @Suppress("UNCHECKED_CAST")
+        ratings = loaded[2] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.RatingUiModel>
+        @Suppress("UNCHECKED_CAST")
+        works = loaded[3] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkUiModel>
+        @Suppress("UNCHECKED_CAST")
+        payments = loaded[4] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.PaymentUiModel>
+        @Suppress("UNCHECKED_CAST")
+        workerSettings = loaded[5] as List<np.com.ai_poweredhomeservicehiringplatform.common.model.WorkerSettingsUiModel>
+        isLoading = false
+    }
 
     val globalMean = remember(ratings) {
         if (ratings.isEmpty()) 0.0 else ratings.map { it.stars }.average()
@@ -156,12 +196,26 @@ private fun UserWorkersScreen(
                 actions = {
                     NotificationBell(
                         count = notificationCount,
-                        onClick = { context.startActivity(Intent(context, UserNotificationsActivity::class.java)) }
+                        onClick = {
+                            context.startActivity(Intent(context, UserNotificationsActivity::class.java))
+                            activity?.finish()
+                        }
                     )
                 }
             )
         }
     ) { innerPadding ->
+        if (isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                FullScreenLoading()
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
